@@ -18,18 +18,15 @@
     <ClInclude Include="pch.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="Shader.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="ConsoleApplication1.cpp">
+    <ClCompile Include="C:\Users\lucas\Downloads\glad\src\glad.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\lucas\Downloads\glad\src\glad.c">
+    <ClCompile Include="Mobius.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
