@@ -23,10 +23,10 @@
     <ClCompile Include="pch.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\lucas\Downloads\glad\src\glad.c">
+    <ClCompile Include="Mobius.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="Mobius.cpp">
+    <ClCompile Include="glad.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
