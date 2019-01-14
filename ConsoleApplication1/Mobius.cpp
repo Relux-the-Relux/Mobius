@@ -22,9 +22,12 @@ const GLchar* vertexShaderSource =
 ""
 "out vec4 fragmentColor;"
 ""
+"uniform mat4 view;"
+"uniform mat4 projection;"
+""
 "void main()"
 "{"
-"	gl_Position = vec4(aPos, 1.0);"
+"	gl_Position = projection * view * vec4(aPos, 1.0);"
 "   fragmentColor = in_Color;"
 "}";
 
@@ -38,6 +41,9 @@ const GLchar* fragmentShaderSource =
 "{"
 "  out_color = fragmentColor;\n"
 "}";
+
+int screenWidth = 600;
+int screenHeight = 600;
 
 float pi = 3.14159265358979323846;
 
@@ -73,7 +79,7 @@ int main()
 	}
 
 
-	glViewport(0, 0, 600, 600);
+	glViewport(0, 0, screenWidth, screenHeight);
 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
@@ -112,7 +118,34 @@ int main()
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
 
+	//camera postition
+	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 
+	//focus of the camera
+	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+
+	// right axis of the camera
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+
+	// up axis
+	glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
+
+
+	//camera matrix
+	glm::mat4 view;
+	view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
+		glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::vec3(0.0f, 1.0f, 0.0f));
+
+	//setting initial camera
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, &view[0][0]);
+
+	//perpective
+	glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)screenWidth/(float)screenHeight, 0.1f, 100.0f);
+
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, &proj[0][0]);
 
 	std::vector<float> mobiusVertices = calculateMobius(64 * 3); //Mobius with (100+1)^2 vertices 
 
