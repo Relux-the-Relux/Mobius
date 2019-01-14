@@ -1,39 +1,42 @@
-﻿#include <glad/glad.h>
+﻿
+
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+
+
+
+
 #include <iostream>
 #include <vector>
 #include <math.h>
+#include <stdio.h>
 
 const GLchar* vertexShaderSource =
 "#version 440 core\n"
 "layout(location = 0) in vec3 aPos;"
-"layout(location = 1) in vec3 aColor;"
-"layout(location = 2) in vec3 aNormal;"
+"layout(location = 1) in vec4 in_Color;"
 ""
-"flat out vec4 ourColor;"
-"flat out vec3 ourNormal;"
+"out vec4 fragmentColor;"
 ""
 "void main()"
 "{"
 "	gl_Position = vec4(aPos, 1.0);"
-"	ourColor = vec4(aColor, 1.0);"
-"	ourNormal = vec3(aNormal);"
-"}" ;
+"   fragmentColor = in_Color;"
+"}";
 
 const GLchar* fragmentShaderSource =
 "#version 440 core\n"
-"out vec4 FragColor;"
+"out vec4 out_color;\n"
 ""
-"flat in vec4 ourColor;"
-"flat in vec3 ourNormal;"
+"in vec4 fragmentColor;"
 ""
 "void main()"
 "{"
-"	FragColor = ourColor;"
+"  out_color = fragmentColor;\n"
 "}";
 
 float pi = 3.14159265358979323846;
@@ -43,6 +46,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 
 std::vector<float> calculateMobius(int rootOfVertices);
+std::vector<int> calculateIndices(int rootOfIndices);
+std::vector<float>g_color_buffer_data(int rootOfColors);
 
 int main()
 {
@@ -58,7 +63,7 @@ int main()
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
 		return -1;
-	} 
+	}
 	glfwMakeContextCurrent(window);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -72,7 +77,7 @@ int main()
 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	
+
 
 	unsigned int vertexShader;
 	vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -109,57 +114,66 @@ int main()
 
 
 
-	std::vector<float> mobiusVertices = calculateMobius(100); //Mobius with (100+1)^2 vertices 
+	std::vector<float> mobiusVertices = calculateMobius(64 * 3); //Mobius with (100+1)^2 vertices 
 
 
-	std::vector<int> mobiusIndices;
+	std::vector<int> mobiusIndices = calculateIndices(64 * 3);
+	std::vector<float> mobiusColors = g_color_buffer_data(192 * 4);
 
-	std::vector<float> mobiusNormals;
 
-	unsigned int EBO;
-	glGenBuffers(1, &EBO);
+	// ids for object
+	GLuint  VAO;
+	GLuint  EBO;
+	GLuint  VBOcoords;
+	GLint   m_iColorAttribPosition0;
 
-	unsigned int VBO[2];
-	glGenBuffers(2, VBO);
-
-	unsigned int VAO;
+	// create vertex array object
 	glGenVertexArrays(1, &VAO);
-
 	glBindVertexArray(VAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(mobiusVertices), &mobiusVertices.front(), GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	// create coords object
+	glGenBuffers(1, &VBOcoords);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOcoords);
+	glBufferData(GL_ARRAY_BUFFER, 4 * 192, &mobiusVertices.front(), GL_STATIC_DRAW);
+
+
 	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	// create color buffer
+	GLuint colorbuffer;
+	glGenBuffers(1, &colorbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+	glBufferData(GL_ARRAY_BUFFER, 6 * 192, &mobiusColors.front(), GL_STATIC_DRAW);
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(
+		1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+		4,                                // size
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+	);
 
-	glBindVertexArray(VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(mobiusNormals), &mobiusNormals.front(), GL_STATIC_DRAW);
-
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(2);
-	
+	// create buffer object for indices
+	glGenBuffers(1, &EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(mobiusIndices), &mobiusIndices.front(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * 192, &mobiusIndices.front(), GL_STATIC_DRAW);
+
+	std::cout << "test" << std::endl;
 
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
 
 		glClearColor(0.0f, 0.5f, 0.0f, 1.0f); //green background
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glUseProgram(shaderProgram);
 		//
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
-
-		glBindVertexArray(0);
+		glDrawElements(GL_TRIANGLES, 192, GL_UNSIGNED_INT, 0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -181,19 +195,253 @@ void processInput(GLFWwindow *window)
 
 std::vector<float> calculateMobius(int rootOfVertices) {
 	std::vector<float> mobius;
+	double a = 0;
+	while (a < 2 * pi) {
+		float u = cos(a)* (1 + (-0.5 * cos(a / 2)));
+		mobius.push_back(u);
 
-	for (int i = 0; i < rootOfVertices; i++) {
-		float u = ((2 * pi * i )/  rootOfVertices);
-		float v = (( 2* i) / rootOfVertices) - 1;
+		float v = sin(a)* (1 + (-0.5 * cos(a / 2)));
+		mobius.push_back(v);
 
-		float x = (1 + (v / 2) * cos(u / 2)) * cos(u);
-		float y = (1 + (v / 2) * cos(u / 2)) * sin(u);
-		float z = (v / 2) * sin(u / 2);
+		float w = -0.5 * sin(a / 2);
+		mobius.push_back(w);
 
+		float x = cos(a)* (1 + (0.5 * cos(a / 2)));
 		mobius.push_back(x);
+
+		float y = sin(a)* (1 + (0.5 * cos(a / 2)));
 		mobius.push_back(y);
+
+		float z = 0.5 * sin(a / 2);
 		mobius.push_back(z);
+		a = a + 0.2;
+
 	}
 
 	return mobius;
 }
+
+std::vector<int> calculateIndices(int rootOfIndices) {
+	std::vector<int> mobiusIndices;
+	int i = 0;
+	while (i < rootOfIndices) {
+		mobiusIndices.push_back(i);
+		i++;
+		mobiusIndices.push_back(i);
+		i++;
+		if (i == 64) {
+			i = 2;
+			mobiusIndices.push_back(i);
+			i = 62;
+			mobiusIndices.push_back(i);
+			i = 1;
+			mobiusIndices.push_back(i);
+			i = 2;
+			mobiusIndices.push_back(i);
+			break;
+		}
+		mobiusIndices.push_back(i);
+		i--;
+
+	}
+
+
+	return mobiusIndices;
+}
+
+std::vector<float>g_color_buffer_data(int rootOfColors) {
+	std::vector<float> mobiuscolors = {
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //10
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //20
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //30
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //40
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //50
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //60
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //70
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //80
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //90
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //100
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //110
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //120
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //130
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //140
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //150
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //160
+	0.543f, 0.021f, 0.978f, 1.0f,
+	0.279f, 0.317f, 0.505f, 1.0f,
+	0.167f, 0.620f, 0.077f, 1.0f,
+	0.347f, 0.857f, 0.137f, 1.0f,
+	0.055f, 0.953f, 0.042f, 1.0f,
+	0.714f, 0.505f, 0.345f, 1.0f,
+	0.783f, 0.290f, 0.734f, 1.0f,
+	0.722f, 0.645f, 0.174f, 1.0f,
+	0.302f, 0.455f, 0.848f, 1.0f,
+	0.225f, 0.587f, 0.040f, 1.0f, //170
+	0.517f, 0.713f, 0.338f, 1.0f,
+	0.053f, 0.959f, 0.120f, 1.0f,
+	0.393f, 0.621f, 0.362f, 1.0f,
+	0.673f, 0.211f, 0.457f, 1.0f,
+	0.820f, 0.883f, 0.371f, 1.0f,
+	0.982f, 0.099f, 0.879f, 1.0f,
+	0.714f, 0.505f, 0.345f, 1.0f,
+	0.783f, 0.290f, 0.734f, 1.0f,
+	0.722f, 0.645f, 0.174f, 1.0f,
+	0.302f, 0.455f, 0.848f, 1.0f, //180
+	0.583f, 0.771f, 0.014f, 1.0f,
+	0.609f, 0.115f, 0.436f, 1.0f,
+	0.327f, 0.483f, 0.844f, 1.0f,
+	0.822f, 0.569f, 0.201f, 1.0f,
+	0.435f, 0.602f, 0.223f, 1.0f,
+	0.310f, 0.747f, 0.185f, 1.0f,
+	0.597f, 0.770f, 0.761f, 1.0f,
+	0.559f, 0.436f, 0.730f, 1.0f,
+	0.359f, 0.583f, 0.152f, 1.0f,
+	0.310f, 0.747f, 0.185f, 1.0f, //190
+	0.597f, 0.770f, 0.761f, 1.0f,
+	0.559f, 0.436f, 0.730f, 1.0f };
+	return mobiuscolors;
+};
