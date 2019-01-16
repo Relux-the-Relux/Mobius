@@ -520,8 +520,8 @@ void processInput(GLFWwindow *window)
 	cameraFront = glm::normalize(front);
 
 	glm::vec3 up;
-	up.x = 0.0f;
+	up.x = cos(glm::radians(yaw)) * sin(glm::radians(pitch));
 	up.y = cos(glm::radians(pitch));
-	up.z = sin(glm::radians(pitch));
+	up.z = sin(glm::radians(yaw)) * sin(glm::radians(pitch));
 	cameraUp = glm::normalize(up);
 }
