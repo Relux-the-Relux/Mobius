@@ -494,6 +494,11 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+		cameraPos += cameraSpeed * cameraFront;
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+		cameraPos -= cameraSpeed * cameraFront;
+
 	if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
 		pitch += 0.1f;
 	if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
