@@ -412,8 +412,8 @@ std::vector<int> calculateSphereIndices(int rootOfIndices) {
 	{
 		for (unsigned int sliceNumber = 0; sliceNumber <= slices; ++sliceNumber)
 		{
-			sphereIndices.push_back((stackNumber * slices) + (sliceNumber % slices));
-			sphereIndices.push_back(((stackNumber + 1) * slices) + (sliceNumber % slices));
+			sphereIndices.push_back((stackNumber * (slices + 1)) + sliceNumber);
+			sphereIndices.push_back(((stackNumber + 1) * (slices + 1)) + sliceNumber);
 		}
 	}
 	//create triangle out of triangle-strip 
