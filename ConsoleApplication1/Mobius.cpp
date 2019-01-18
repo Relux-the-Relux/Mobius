@@ -7,7 +7,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 
-
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 
 #include <iostream>
@@ -36,11 +37,42 @@ const GLchar* vertexShaderSource =
 "   fragmentColor = in_Color;"
 "}";
 
+const GLchar* vertexTextureShaderSource =
+"#version 440 core\n"
+"layout(location = 0) in vec3 aPos;"
+"layout(location = 1) in vec4 in_Color;"
+"layout(location = 3) in vec2 in_TexCoord;"
+""
+"out vec4 fragmentColor;"
+"out vec2 TexCoord;"
+""
+"uniform mat4 view;"
+"uniform mat4 projection;"
+""
+"void main()"
+"{"
+"	gl_Position = projection * view * vec4(aPos, 1.0);"
+"   fragmentColor = in_Color;"
+"	TexCoord = in_TexCoord;"
+"}";
+
 const GLchar* fragmentShaderSource =
 "#version 440 core\n"
 "out vec4 out_color;\n"
 ""
 "in vec4 fragmentColor;"
+""
+"void main()"
+"{"
+"  out_color = fragmentColor;\n"
+"}";
+
+const GLchar* fragmentTextureShaderSource =
+"#version 440 core\n"
+"out vec4 out_color;\n"
+""
+"in vec4 fragmentColor;"
+"in vec2 TexCoord;"
 ""
 "void main()"
 "{"
@@ -105,7 +137,7 @@ int main()
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 
-
+	//NON-TEXTURED SHADER
 	unsigned int vertexShader;
 	vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
@@ -139,7 +171,38 @@ int main()
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
 
-	
+
+	//TEXTURED SHADER
+	unsigned int vertexTextureShader;
+	vertexTextureShader = glCreateShader(GL_VERTEX_SHADER);
+
+	glShaderSource(vertexTextureShader, 1, &vertexShaderSource, NULL);
+	glCompileShader(vertexTextureShader);
+
+	glGetShaderiv(vertexTextureShader, GL_COMPILE_STATUS, &success);
+
+	if (!success)
+	{
+		glGetShaderInfoLog(vertexTextureShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+
+	unsigned int fragmentTextureShader;
+	fragmentTextureShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentTextureShader, 1, &fragmentShaderSource, NULL);
+	glCompileShader(fragmentTextureShader);
+
+	unsigned int shaderTextureProgram;
+	shaderTextureProgram = glCreateProgram();
+
+	glAttachShader(shaderTextureProgram, vertexTextureShader);
+	glAttachShader(shaderTextureProgram, fragmentTextureShader);
+	glLinkProgram(shaderTextureProgram);
+
+	glUseProgram(shaderTextureProgram);
+
+	glDeleteShader(vertexTextureShader);
+	glDeleteShader(fragmentTextureShader);
 
 
 	//camera matrix
@@ -157,7 +220,7 @@ int main()
 	std::vector<int> mobiusIndices = calculateMobiusIndices(64 * 3);
 	std::vector<float> mobiusColors = calculateMobiusColors(192 * 4);
 
-	std::vector<float> sphereVertices = calculateSphereVertices(144 * 3);
+	std::vector<float> sphereVertices = calculateSphereVertices(160 * 3);
 	std::vector<int> sphereIndices = calculateSphereIndices(272);
 	std::vector<float> sphereColors = calculateSphereColors(144 * 4);
 
@@ -292,7 +355,7 @@ std::vector<float> calculateSphereVertices(int rootOfVertices) {
 	std::vector<float> sphere;
 	for (unsigned int stackNumber = 0; stackNumber <= stacks; ++stackNumber)
 	{
-		for (unsigned int sliceNumber = 0; sliceNumber < slices; ++sliceNumber)
+		for (unsigned int sliceNumber = 0; sliceNumber <= slices; ++sliceNumber)
 		{
 			float theta = stackNumber * pi / stacks;
 			float phi = sliceNumber * 2 * pi / slices;
@@ -362,17 +425,16 @@ std::vector<int> calculateSphereIndices(int rootOfIndices) {
 		i++;
 		sphereIndices2.push_back(sphereIndices.at(i));
 		i++;
-
-		sphereIndices2.push_back(sphereIndices.at(i));
-		if (i == 271) {
+		if (i >= sphereIndices.size()) {
 			break;
 		}
+		sphereIndices2.push_back(sphereIndices.at(i));
 		i--;
 	}
 	//correct rotation of normalized vectors
 	i = 0;
 	int temp = 0;
-	while (i < sphereIndices2.size()) {
+	while (i < sphereIndices2.size() - 3) {
 		i = i + 3;
 		temp = sphereIndices2.at(i);
 		sphereIndices2.at(i) = sphereIndices2.at(i + 1);
