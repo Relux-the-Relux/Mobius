@@ -335,7 +335,7 @@ int main()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * LightSphereIndices.size(), &LightSphereIndices.front(), GL_STATIC_DRAW);
 
 	std::cout << "test" << std::endl;
-
+	int i = 0;
 	while (!glfwWindowShouldClose(window))
 	{
 		// per-frame time logic
@@ -361,11 +361,45 @@ int main()
 		glBindVertexArray(LightSphere_VAO);
 		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-		AdjustVertexData(0.001, 0.001, LightSphereVertices);
+		AdjustVertexData(0.00001, 0.00001, LightSphereVertices);
 		glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
 		glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
 		glEnableVertexAttribArray(0); //Sphere is position2
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+		i++;
+		if (i >= 60)
+		{
+			float s = mobiusColors.at(0);
+			float t = mobiusColors.at(1);
+			float u = mobiusColors.at(2);
+			float v = mobiusColors.at(3);
+			float w = mobiusColors.at(4);
+			float x = mobiusColors.at(5);
+			float y = mobiusColors.at(6);
+			float z = mobiusColors.at(7);
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.erase(mobiusColors.begin());
+			mobiusColors.push_back(s);
+			mobiusColors.push_back(t);
+			mobiusColors.push_back(u);
+			mobiusColors.push_back(v);
+			mobiusColors.push_back(w);
+			mobiusColors.push_back(x);
+			mobiusColors.push_back(y);
+			mobiusColors.push_back(z);
+			glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+			glBufferData(GL_ARRAY_BUFFER, 6 * mobiusColors.size(), &mobiusColors.front(), GL_STATIC_DRAW);
+			glEnableVertexAttribArray(1);
+			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+			i = 0;
+		}
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -1742,10 +1776,6 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
 		yaw += 0.1f;
 
-	if (pitch > 89.0f)
-		pitch = 89.0f;
-	if (pitch < -89.0f)
-		pitch = -89.0f;
 
 	glm::vec3 front;
 	front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
@@ -1754,8 +1784,8 @@ void processInput(GLFWwindow *window)
 	cameraFront = glm::normalize(front);
 
 	glm::vec3 up;
-	up.x = cos(glm::radians(yaw)) * sin(glm::radians(pitch));
+	up.x = 0;
 	up.y = cos(glm::radians(pitch));
-	up.z = sin(glm::radians(yaw)) * sin(glm::radians(pitch));
+	up.z = sin(glm::radians(pitch));
 	cameraUp = glm::normalize(up);
 }
