@@ -199,7 +199,6 @@ int main()
 	glAttachShader(shaderTextureProgram, fragmentTextureShader);
 	glLinkProgram(shaderTextureProgram);
 
-	glUseProgram(shaderTextureProgram);
 
 	glDeleteShader(vertexTextureShader);
 	glDeleteShader(fragmentTextureShader);
@@ -222,7 +221,7 @@ int main()
 
 	std::vector<float> sphereVertices = calculateSphereVertices(160 * 3);
 	std::vector<int> sphereIndices = calculateSphereIndices(272);
-	std::vector<float> sphereColors = calculateSphereColors(144 * 4);
+	std::vector<float> sphereColors = calculateSphereColors(160 * 4);
 
 
 	// ids for mobius
