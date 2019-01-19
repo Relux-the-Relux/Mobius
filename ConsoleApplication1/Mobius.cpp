@@ -105,6 +105,8 @@ float pi = 3.14159265358979323846;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
+void AdjustVertexData(float fXOffset, float fYOffset, std::vector<float> &LightSphereVertices);
+
 void processInput(GLFWwindow *window);
 
 std::vector<float> calculateMobiusVertices(int rootOfVertices);
@@ -319,7 +321,7 @@ int main()
 	glEnableVertexAttribArray(0); //Sphere is position2
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-	//LIghtSphere Color buffer
+	//LightSphere Color buffer
 	GLuint colorbufferLightSphere;
 	glGenBuffers(1, &colorbufferLightSphere);
 	glBindBuffer(GL_ARRAY_BUFFER, colorbufferLightSphere);
@@ -358,6 +360,12 @@ int main()
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(LightSphere_VAO);
 		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+		AdjustVertexData(0.001, 0.001, LightSphereVertices);
+		glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
+		glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0); //Sphere is position2
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -365,6 +373,22 @@ int main()
 	glfwTerminate();
 	return 0;
 }
+
+void AdjustVertexData(float fXOffset, float fYOffset, std::vector<float> &LightSphereVertices)
+{
+    
+    for(int iVertex = 0; iVertex < LightSphereVertices.size(); iVertex += 1)
+    {
+        LightSphereVertices[iVertex] += fXOffset;
+		//TODO
+        //LightSphereVertices[iVertex + 1] += fYOffset;
+		//LightSphereVertices[iVertex + 2] += fYOffset;
+
+    }
+        
+    
+}
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -549,6 +573,10 @@ std::vector<int> calculateLightSphereIndices(int rootOfIndices) {
 	};
 	return sphereIndices2;
 }
+
+
+
+
 
 
 std::vector<float>calculateMobiusColors(int rootOfColors) {
