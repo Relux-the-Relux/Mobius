@@ -108,6 +108,9 @@ std::vector<float> calculateSphereVertices(int rootOfSphereVertices);
 std::vector<int> calculateSphereIndices(int rootOfSphereIndices);
 std::vector<float> calculateSphereColors(int rootOfSphereColors);
 
+std::vector<float> calculateLightSphereVertices(int rootOfSphereVertices);
+
+
 int main()
 {
 	glfwInit();
@@ -223,6 +226,10 @@ int main()
 	std::vector<int> sphereIndices = calculateSphereIndices(272);
 	std::vector<float> sphereColors = calculateSphereColors(160 * 4);
 
+	std::vector<float> LightSphereVertices = calculateLightSphereVertices(160 * 3);
+	std::vector<int> LightSphereIndices = calculateSphereIndices(272);
+	std::vector<float> LightSphereColors = calculateSphereColors(160 * 4);
+
 
 	// ids for mobius
 	GLuint  VAO;
@@ -285,6 +292,38 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphere_EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * sphereIndices.size(), &sphereIndices.front(), GL_STATIC_DRAW);
 
+
+
+
+	// ids for LightSphere
+	GLuint  LightSphere_VAO;
+	GLuint  LightSphere_EBO;
+	GLuint  LightSphere_VBOcoords;
+
+	//Lightsphere
+	glGenVertexArrays(1, &LightSphere_VAO);
+	glBindVertexArray(LightSphere_VAO);
+
+	//Lightsphere
+	glGenBuffers(1, &LightSphere_VBOcoords);
+	glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
+	glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0); //Sphere is position2
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	//Sphere Color buffer
+	GLuint colorbufferLightSphere;
+	glGenBuffers(1, &colorbufferLightSphere);
+	glBindBuffer(GL_ARRAY_BUFFER, colorbufferLightSphere);
+	glBufferData(GL_ARRAY_BUFFER, 6 * LightSphereColors.size(), &LightSphereColors.front(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1); //Sphere colors is position3
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	//Sphere Indices
+	glGenBuffers(1, &LightSphere_EBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,LightSphere_EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * LightSphereIndices.size(), &LightSphereIndices.front(), GL_STATIC_DRAW);
+
 	std::cout << "test" << std::endl;
 
 	while (!glfwWindowShouldClose(window))
@@ -309,6 +348,8 @@ int main()
 		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(sphere_VAO);
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(LightSphere_VAO);
+		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -368,6 +409,26 @@ std::vector<float> calculateSphereVertices(int rootOfVertices) {
 		}
 	}
 	return sphere;
+}
+
+std::vector<float> calculateLightSphereVertices(int rootOfVertices) {
+	std::vector<float> LightSphere;
+	for (unsigned int stackNumber = 0; stackNumber <= stacks; ++stackNumber)
+	{
+		for (unsigned int sliceNumber = 0; sliceNumber <= slices; ++sliceNumber)
+		{
+			float theta = stackNumber * pi / stacks;
+			float phi = sliceNumber * 2 * pi / slices;
+			float sinTheta = std::sin(theta);
+			float sinPhi = std::sin(phi);
+			float cosTheta = std::cos(theta);
+			float cosPhi = std::cos(phi);
+			LightSphere.push_back(radius * cosPhi * sinTheta +2);
+			LightSphere.push_back(radius * sinPhi * sinTheta +2);
+			LightSphere.push_back(radius * cosTheta +2);
+		}
+	}
+	return LightSphere;
 }
 
 std::vector<int> calculateMobiusIndices(int rootOfIndices) {
