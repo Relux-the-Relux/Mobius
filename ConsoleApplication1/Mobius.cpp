@@ -21,6 +21,13 @@
 #define stacks 8 
 #define slices 16
 
+
+//LightSphere Parameters
+#define radiusLight 0.2
+#define stacksLight 8 
+#define slicesLight 16
+
+
 const GLchar* vertexShaderSource =
 "#version 440 core\n"
 "layout(location = 0) in vec3 aPos;"
@@ -109,7 +116,8 @@ std::vector<int> calculateSphereIndices(int rootOfSphereIndices);
 std::vector<float> calculateSphereColors(int rootOfSphereColors);
 
 std::vector<float> calculateLightSphereVertices(int rootOfSphereVertices);
-
+std::vector<int> calculateLightSphereIndices(int rootOfSphereIndices);
+std::vector<float> calculateLightSphereColors(int rootOfSphereColors);
 
 int main()
 {
@@ -227,8 +235,8 @@ int main()
 	std::vector<float> sphereColors = calculateSphereColors(160 * 4);
 
 	std::vector<float> LightSphereVertices = calculateLightSphereVertices(160 * 3);
-	std::vector<int> LightSphereIndices = calculateSphereIndices(272);
-	std::vector<float> LightSphereColors = calculateSphereColors(160 * 4);
+	std::vector<int> LightSphereIndices = calculateLightSphereIndices(272);
+	std::vector<float> LightSphereColors = calculateLightSphereColors(160 * 4);
 
 
 	// ids for mobius
@@ -311,7 +319,7 @@ int main()
 	glEnableVertexAttribArray(0); //Sphere is position2
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-	//Sphere Color buffer
+	//LIghtSphere Color buffer
 	GLuint colorbufferLightSphere;
 	glGenBuffers(1, &colorbufferLightSphere);
 	glBindBuffer(GL_ARRAY_BUFFER, colorbufferLightSphere);
@@ -319,7 +327,7 @@ int main()
 	glEnableVertexAttribArray(1); //Sphere colors is position3
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-	//Sphere Indices
+	//LightSphere Indices
 	glGenBuffers(1, &LightSphere_EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,LightSphere_EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * LightSphereIndices.size(), &LightSphereIndices.front(), GL_STATIC_DRAW);
@@ -413,19 +421,19 @@ std::vector<float> calculateSphereVertices(int rootOfVertices) {
 
 std::vector<float> calculateLightSphereVertices(int rootOfVertices) {
 	std::vector<float> LightSphere;
-	for (unsigned int stackNumber = 0; stackNumber <= stacks; ++stackNumber)
+	for (unsigned int stackNumber = 0; stackNumber <= stacksLight; ++stackNumber)
 	{
-		for (unsigned int sliceNumber = 0; sliceNumber <= slices; ++sliceNumber)
+		for (unsigned int sliceNumber = 0; sliceNumber <= slicesLight; ++sliceNumber)
 		{
-			float theta = stackNumber * pi / stacks;
-			float phi = sliceNumber * 2 * pi / slices;
+			float theta = stackNumber * pi / stacksLight;
+			float phi = sliceNumber * 2 * pi / slicesLight;
 			float sinTheta = std::sin(theta);
 			float sinPhi = std::sin(phi);
 			float cosTheta = std::cos(theta);
 			float cosPhi = std::cos(phi);
-			LightSphere.push_back(radius * cosPhi * sinTheta +2);
-			LightSphere.push_back(radius * sinPhi * sinTheta +2);
-			LightSphere.push_back(radius * cosTheta +2);
+			LightSphere.push_back(radiusLight * cosPhi * sinTheta +1.5);
+			LightSphere.push_back(radiusLight * sinPhi * sinTheta +1.5);
+			LightSphere.push_back(radiusLight * cosTheta +1.5);
 		}
 	}
 	return LightSphere;
@@ -474,6 +482,44 @@ std::vector<int> calculateSphereIndices(int rootOfIndices) {
 		{
 			sphereIndices.push_back((stackNumber * (slices + 1)) + sliceNumber);
 			sphereIndices.push_back(((stackNumber + 1) * (slices + 1)) + sliceNumber);
+		}
+	}
+	//create triangle out of triangle-strip 
+	std::vector<int> sphereIndices2;
+	int i = 0;
+
+	while (i < sphereIndices.size()) {
+		sphereIndices2.push_back(sphereIndices.at(i));
+		i++;
+		sphereIndices2.push_back(sphereIndices.at(i));
+		i++;
+		if (i >= sphereIndices.size()) {
+			break;
+		}
+		sphereIndices2.push_back(sphereIndices.at(i));
+		i--;
+	}
+	//correct rotation of normalized vectors
+	i = 0;
+	int temp = 0;
+	while (i < sphereIndices2.size() - 3) {
+		i = i + 3;
+		temp = sphereIndices2.at(i);
+		sphereIndices2.at(i) = sphereIndices2.at(i + 1);
+		sphereIndices2.at(i + 1) = temp;
+		i = i + 3;
+	};
+	return sphereIndices2;
+}
+
+std::vector<int> calculateLightSphereIndices(int rootOfIndices) {
+	std::vector<int> sphereIndices;
+	for (unsigned int stackNumber = 0; stackNumber < stacksLight; ++stackNumber)
+	{
+		for (unsigned int sliceNumber = 0; sliceNumber <= slicesLight; ++sliceNumber)
+		{
+			sphereIndices.push_back((stackNumber * (slicesLight + 1)) + sliceNumber);
+			sphereIndices.push_back(((stackNumber + 1) * (slicesLight + 1)) + sliceNumber);
 		}
 	}
 	//create triangle out of triangle-strip 
@@ -1170,6 +1216,474 @@ std::vector<float>calculateSphereColors(int rootOfColors) {
 	return spherecolors;
 };
 
+
+std::vector<float>calculateLightSphereColors(int rootOfColors) {
+	std::vector<float> LightSpherecolors = {
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //10
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //20
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //30
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //40
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //50
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //60
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //70
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //80
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //90
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //100
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //110
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //120
+	0.583f,  0.771f,  0.014f, 1.0f,
+	0.609f,  0.115f,  0.436f, 1.0f,
+	0.327f,  0.483f,  0.844f, 1.0f,
+	0.822f,  0.569f,  0.201f, 1.0f,
+	0.435f,  0.602f,  0.223f, 1.0f,
+	0.310f,  0.747f,  0.185f, 1.0f,
+	0.597f,  0.770f,  0.761f, 1.0f,
+	0.559f,  0.436f,  0.730f, 1.0f,
+	0.359f,  0.583f,  0.152f, 1.0f,
+	0.483f,  0.596f,  0.789f, 1.0f, //130
+	0.559f,  0.861f,  0.639f, 1.0f,
+	0.195f,  0.548f,  0.859f, 1.0f,
+	0.014f,  0.184f,  0.576f, 1.0f,
+	0.771f,  0.328f,  0.970f, 1.0f,
+	0.406f,  0.615f,  0.116f, 1.0f,
+	0.676f,  0.977f,  0.133f, 1.0f,
+	0.971f,  0.572f,  0.833f, 1.0f,
+	0.140f,  0.616f,  0.489f, 1.0f,
+	0.997f,  0.513f,  0.064f, 1.0f,
+	0.945f,  0.719f,  0.592f, 1.0f, //140
+	0.543f,  0.021f,  0.978f, 1.0f,
+	0.279f,  0.317f,  0.505f, 1.0f,
+	0.167f,  0.620f,  0.077f, 1.0f,
+	0.347f,  0.857f,  0.137f, 1.0f,
+	0.055f,  0.953f,  0.042f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f,
+	0.225f,  0.587f,  0.040f, 1.0f, //150
+	0.517f,  0.713f,  0.338f, 1.0f,
+	0.053f,  0.959f,  0.120f, 1.0f,
+	0.393f,  0.621f,  0.362f, 1.0f,
+	0.673f,  0.211f,  0.457f, 1.0f,
+	0.820f,  0.883f,  0.371f, 1.0f,
+	0.982f,  0.099f,  0.879f, 1.0f,
+	0.714f,  0.505f,  0.345f, 1.0f,
+	0.783f,  0.290f,  0.734f, 1.0f,
+	0.722f,  0.645f,  0.174f, 1.0f,
+	0.302f,  0.455f,  0.848f, 1.0f, //160
+	0.543f, 0.021f, 0.978f, 1.0f,
+	0.279f, 0.317f, 0.505f, 1.0f,
+	0.167f, 0.620f, 0.077f, 1.0f,
+	0.347f, 0.857f, 0.137f, 1.0f,
+	0.055f, 0.953f, 0.042f, 1.0f,
+	0.714f, 0.505f, 0.345f, 1.0f,
+	0.783f, 0.290f, 0.734f, 1.0f,
+	0.722f, 0.645f, 0.174f, 1.0f,
+	0.302f, 0.455f, 0.848f, 1.0f,
+	0.225f, 0.587f, 0.040f, 1.0f, //170
+	0.517f, 0.713f, 0.338f, 1.0f,
+	0.053f, 0.959f, 0.120f, 1.0f,
+	0.393f, 0.621f, 0.362f, 1.0f,
+	0.673f, 0.211f, 0.457f, 1.0f,
+	0.820f, 0.883f, 0.371f, 1.0f,
+	0.982f, 0.099f, 0.879f, 1.0f,
+	0.714f, 0.505f, 0.345f, 1.0f,
+	0.783f, 0.290f, 0.734f, 1.0f,
+	0.722f, 0.645f, 0.174f, 1.0f,
+	0.302f, 0.455f, 0.848f, 1.0f, //180
+	0.583f, 0.771f, 0.014f, 1.0f,
+	0.609f, 0.115f, 0.436f, 1.0f,
+	0.327f, 0.483f, 0.844f, 1.0f,
+	0.822f, 0.569f, 0.201f, 1.0f,
+	0.435f, 0.602f, 0.223f, 1.0f,
+	0.310f, 0.747f, 0.185f, 1.0f,
+	0.597f, 0.770f, 0.761f, 1.0f,
+	0.559f, 0.436f, 0.730f, 1.0f,
+	0.359f, 0.583f, 0.152f, 1.0f,
+	0.310f, 0.747f, 0.185f, 1.0f, //190
+		0.583f, 0.771f, 0.014f, 1.0f,
+		0.609f, 0.115f, 0.436f, 1.0f,
+		0.327f, 0.483f, 0.844f, 1.0f,
+		0.822f, 0.569f, 0.201f, 1.0f,
+		0.435f, 0.602f, 0.223f, 1.0f,
+		0.310f, 0.747f, 0.185f, 1.0f,
+		0.597f, 0.770f, 0.761f, 1.0f,
+		0.559f, 0.436f, 0.730f, 1.0f,
+		0.359f, 0.583f, 0.152f, 1.0f,
+		0.483f, 0.596f, 0.789f, 1.0f, //200
+		0.559f, 0.861f, 0.639f, 1.0f,
+		0.195f, 0.548f, 0.859f, 1.0f,
+		0.014f, 0.184f, 0.576f, 1.0f,
+		0.771f, 0.328f, 0.970f, 1.0f,
+		0.406f, 0.615f, 0.116f, 1.0f,
+		0.676f, 0.977f, 0.133f, 1.0f,
+		0.971f, 0.572f, 0.833f, 1.0f,
+		0.140f, 0.616f, 0.489f, 1.0f,
+		0.997f, 0.513f, 0.064f, 1.0f,
+		0.945f, 0.719f, 0.592f, 1.0f, //210
+		0.543f, 0.021f, 0.978f, 1.0f,
+		0.279f, 0.317f, 0.505f, 1.0f,
+		0.167f, 0.620f, 0.077f, 1.0f,
+		0.347f, 0.857f, 0.137f, 1.0f,
+		0.055f, 0.953f, 0.042f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f,
+		0.225f, 0.587f, 0.040f, 1.0f, //220
+		0.517f, 0.713f, 0.338f, 1.0f,
+		0.053f, 0.959f, 0.120f, 1.0f,
+		0.393f, 0.621f, 0.362f, 1.0f,
+		0.673f, 0.211f, 0.457f, 1.0f,
+		0.820f, 0.883f, 0.371f, 1.0f,
+		0.982f, 0.099f, 0.879f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f, //230
+		0.583f, 0.771f, 0.014f, 1.0f,
+		0.609f, 0.115f, 0.436f, 1.0f,
+		0.327f, 0.483f, 0.844f, 1.0f,
+		0.822f, 0.569f, 0.201f, 1.0f,
+		0.435f, 0.602f, 0.223f, 1.0f,
+		0.310f, 0.747f, 0.185f, 1.0f,
+		0.597f, 0.770f, 0.761f, 1.0f,
+		0.559f, 0.436f, 0.730f, 1.0f,
+		0.359f, 0.583f, 0.152f, 1.0f,
+		0.483f, 0.596f, 0.789f, 1.0f, //240
+		0.559f, 0.861f, 0.639f, 1.0f,
+		0.195f, 0.548f, 0.859f, 1.0f,
+		0.014f, 0.184f, 0.576f, 1.0f,
+		0.771f, 0.328f, 0.970f, 1.0f,
+		0.406f, 0.615f, 0.116f, 1.0f,
+		0.676f, 0.977f, 0.133f, 1.0f,
+		0.971f, 0.572f, 0.833f, 1.0f,
+		0.140f, 0.616f, 0.489f, 1.0f,
+		0.997f, 0.513f, 0.064f, 1.0f,
+		0.945f, 0.719f, 0.592f, 1.0f, //250
+		0.543f, 0.021f, 0.978f, 1.0f,
+		0.279f, 0.317f, 0.505f, 1.0f,
+		0.167f, 0.620f, 0.077f, 1.0f,
+		0.347f, 0.857f, 0.137f, 1.0f,
+		0.055f, 0.953f, 0.042f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f,
+		0.225f, 0.587f, 0.040f, 1.0f, //260
+		0.517f, 0.713f, 0.338f, 1.0f,
+		0.053f, 0.959f, 0.120f, 1.0f,
+		0.393f, 0.621f, 0.362f, 1.0f,
+		0.673f, 0.211f, 0.457f, 1.0f,
+		0.820f, 0.883f, 0.371f, 1.0f,
+		0.982f, 0.099f, 0.879f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f, //270
+		0.583f, 0.771f, 0.014f, 1.0f,
+		0.609f, 0.115f, 0.436f, 1.0f,
+		0.327f, 0.483f, 0.844f, 1.0f,
+		0.822f, 0.569f, 0.201f, 1.0f,
+		0.435f, 0.602f, 0.223f, 1.0f,
+		0.310f, 0.747f, 0.185f, 1.0f,
+		0.597f, 0.770f, 0.761f, 1.0f,
+		0.559f, 0.436f, 0.730f, 1.0f,
+		0.359f, 0.583f, 0.152f, 1.0f,
+		0.483f, 0.596f, 0.789f, 1.0f, //280
+		0.559f, 0.861f, 0.639f, 1.0f,
+		0.195f, 0.548f, 0.859f, 1.0f,
+		0.014f, 0.184f, 0.576f, 1.0f,
+		0.771f, 0.328f, 0.970f, 1.0f,
+		0.406f, 0.615f, 0.116f, 1.0f,
+		0.676f, 0.977f, 0.133f, 1.0f,
+		0.971f, 0.572f, 0.833f, 1.0f,
+		0.140f, 0.616f, 0.489f, 1.0f,
+		0.997f, 0.513f, 0.064f, 1.0f,
+		0.945f, 0.719f, 0.592f, 1.0f, //290
+		0.543f, 0.021f, 0.978f, 1.0f,
+		0.279f, 0.317f, 0.505f, 1.0f,
+		0.167f, 0.620f, 0.077f, 1.0f,
+		0.347f, 0.857f, 0.137f, 1.0f,
+		0.055f, 0.953f, 0.042f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f,
+		0.225f, 0.587f, 0.040f, 1.0f, //300
+		0.517f, 0.713f, 0.338f, 1.0f,
+		0.053f, 0.959f, 0.120f, 1.0f,
+		0.393f, 0.621f, 0.362f, 1.0f,
+		0.673f, 0.211f, 0.457f, 1.0f,
+		0.820f, 0.883f, 0.371f, 1.0f,
+		0.982f, 0.099f, 0.879f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f, //310
+		0.583f, 0.771f, 0.014f, 1.0f,
+		0.609f, 0.115f, 0.436f, 1.0f,
+		0.327f, 0.483f, 0.844f, 1.0f,
+		0.822f, 0.569f, 0.201f, 1.0f,
+		0.435f, 0.602f, 0.223f, 1.0f,
+		0.310f, 0.747f, 0.185f, 1.0f,
+		0.597f, 0.770f, 0.761f, 1.0f,
+		0.559f, 0.436f, 0.730f, 1.0f,
+		0.359f, 0.583f, 0.152f, 1.0f,
+		0.483f, 0.596f, 0.789f, 1.0f, //320
+		0.559f, 0.861f, 0.639f, 1.0f,
+		0.195f, 0.548f, 0.859f, 1.0f,
+		0.014f, 0.184f, 0.576f, 1.0f,
+		0.771f, 0.328f, 0.970f, 1.0f,
+		0.406f, 0.615f, 0.116f, 1.0f,
+		0.676f, 0.977f, 0.133f, 1.0f,
+		0.971f, 0.572f, 0.833f, 1.0f,
+		0.140f, 0.616f, 0.489f, 1.0f,
+		0.997f, 0.513f, 0.064f, 1.0f,
+		0.945f, 0.719f, 0.592f, 1.0f, //330
+		0.543f, 0.021f, 0.978f, 1.0f,
+		0.279f, 0.317f, 0.505f, 1.0f,
+		0.167f, 0.620f, 0.077f, 1.0f,
+		0.347f, 0.857f, 0.137f, 1.0f,
+		0.055f, 0.953f, 0.042f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f,
+		0.225f, 0.587f, 0.040f, 1.0f, //340
+		0.517f, 0.713f, 0.338f, 1.0f,
+		0.053f, 0.959f, 0.120f, 1.0f,
+		0.393f, 0.621f, 0.362f, 1.0f,
+		0.673f, 0.211f, 0.457f, 1.0f,
+		0.820f, 0.883f, 0.371f, 1.0f,
+		0.982f, 0.099f, 0.879f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f, //350
+		0.543f, 0.021f, 0.978f, 1.0f,
+		0.279f, 0.317f, 0.505f, 1.0f,
+		0.167f, 0.620f, 0.077f, 1.0f,
+		0.347f, 0.857f, 0.137f, 1.0f,
+		0.055f, 0.953f, 0.042f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f,
+		0.225f, 0.587f, 0.040f, 1.0f, //360
+		0.517f, 0.713f, 0.338f, 1.0f,
+		0.053f, 0.959f, 0.120f, 1.0f,
+		0.393f, 0.621f, 0.362f, 1.0f,
+		0.673f, 0.211f, 0.457f, 1.0f,
+		0.820f, 0.883f, 0.371f, 1.0f,
+		0.982f, 0.099f, 0.879f, 1.0f,
+		0.714f, 0.505f, 0.345f, 1.0f,
+		0.783f, 0.290f, 0.734f, 1.0f,
+		0.722f, 0.645f, 0.174f, 1.0f,
+		0.302f, 0.455f, 0.848f, 1.0f, //370
+		0.583f, 0.771f, 0.014f, 1.0f,
+		0.609f, 0.115f, 0.436f, 1.0f,
+		0.327f, 0.483f, 0.844f, .0f,
+		0.822f, 0.569f, 0.201f, 1.0f,
+		0.435f, 0.602f, 0.223f, 1.0f,
+		0.310f, 0.747f, 0.185f, 1.0f,
+		0.597f, 0.770f, 0.761f, 1.0f,
+		0.559f, 0.436f, 0.730f, 1.0f,
+		0.359f, 0.583f, 0.152f, 1.0f,
+		0.310f, 0.747f, 0.185f, 1.0f, //380 };
+			0.483f, 0.596f, 0.789f, 1.0f, //390
+			0.559f, 0.861f, 0.639f, 1.0f,
+			0.195f, 0.548f, 0.859f, 1.0f,
+			0.014f, 0.184f, 0.576f, 1.0f,
+			0.771f, 0.328f, 0.970f, 1.0f,
+			0.406f, 0.615f, 0.116f, 1.0f,
+			0.676f, 0.977f, 0.133f, 1.0f,
+			0.971f, 0.572f, 0.833f, 1.0f,
+			0.140f, 0.616f, 0.489f, 1.0f,
+			0.997f, 0.513f, 0.064f, 1.0f,
+			0.945f, 0.719f, 0.592f, 1.0f, //400
+			0.543f, 0.021f, 0.978f, 1.0f,
+			0.279f, 0.317f, 0.505f, 1.0f,
+			0.167f, 0.620f, 0.077f, 1.0f,
+			0.347f, 0.857f, 0.137f, 1.0f,
+			0.055f, 0.953f, 0.042f, 1.0f,
+			0.714f, 0.505f, 0.345f, 1.0f,
+			0.783f, 0.290f, 0.734f, 1.0f,
+			0.722f, 0.645f, 0.174f, 1.0f,
+			0.302f, 0.455f, 0.848f, 1.0f,
+			0.225f, 0.587f, 0.040f, 1.0f, //410
+			0.517f, 0.713f, 0.338f, 1.0f,
+			0.053f, 0.959f, 0.120f, 1.0f,
+			0.393f, 0.621f, 0.362f, 1.0f,
+			0.673f, 0.211f, 0.457f, 1.0f,
+			0.820f, 0.883f, 0.371f, 1.0f,
+			0.982f, 0.099f, 0.879f, 1.0f,
+			0.714f, 0.505f, 0.345f, 1.0f,
+			0.783f, 0.290f, 0.734f, 1.0f,
+			0.722f, 0.645f, 0.174f, 1.0f,
+			0.302f, 0.455f, 0.848f, 1.0f, //420
+			0.583f, 0.771f, 0.014f, 1.0f,
+			0.609f, 0.115f, 0.436f, 1.0f,
+			0.327f, 0.483f, 0.844f, 1.0f,
+			0.822f, 0.569f, 0.201f, 1.0f,
+			0.435f, 0.602f, 0.223f, 1.0f,
+			0.310f, 0.747f, 0.185f, 1.0f,
+			0.597f, 0.770f, 0.761f, 1.0f,
+			0.559f, 0.436f, 0.730f, 1.0f,
+			0.359f, 0.583f, 0.152f, 1.0f,
+			0.483f, 0.596f, 0.789f, 1.0f, //430
+			0.559f, 0.861f, 0.639f, 1.0f,
+			0.195f, 0.548f, 0.859f, 1.0f,
+			0.014f, 0.184f, 0.576f, 1.0f,
+			0.771f, 0.328f, 0.970f, 1.0f,
+			0.406f, 0.615f, 0.116f, 1.0f,
+			0.676f, 0.977f, 0.133f, 1.0f,
+			0.971f, 0.572f, 0.833f, 1.0f,
+			0.140f, 0.616f, 0.489f, 1.0f,
+			0.997f, 0.513f, 0.064f, 1.0f,
+			0.945f, 0.719f, 0.592f, 1.0f, //440
+			0.543f, 0.021f, 0.978f, 1.0f,
+			0.279f, 0.317f, 0.505f, 1.0f,
+			0.167f, 0.620f, 0.077f, 1.0f,
+			0.347f, 0.857f, 0.137f, 1.0f,
+			0.055f, 0.953f, 0.042f, 1.0f,
+			0.714f, 0.505f, 0.345f, 1.0f,
+			0.783f, 0.290f, 0.734f, 1.0f,
+			0.722f, 0.645f, 0.174f, 1.0f,
+			0.302f, 0.455f, 0.848f, 1.0f,
+			0.225f, 0.587f, 0.040f, 1.0f, //450
+			0.517f, 0.713f, 0.338f, 1.0f,
+			0.053f, 0.959f, 0.120f, 1.0f,
+			0.393f, 0.621f, 0.362f, 1.0f,
+			0.673f, 0.211f, 0.457f, 1.0f,
+			0.820f, 0.883f, 0.371f, 1.0f,
+			0.982f, 0.099f, 0.879f, 1.0f,
+			0.714f, 0.505f, 0.345f, 1.0f,
+			0.783f, 0.290f, 0.734f, 1.0f,
+			0.722f, 0.645f, 0.174f, 1.0f,
+			0.302f, 0.455f, 0.848f, 1.0f, //460
+			0.543f, 0.021f, 0.978f, 1.0f,
+			0.279f, 0.317f, 0.505f, 1.0f,
+			0.167f, 0.620f, 0.077f, 1.0f,
+			0.347f, 0.857f, 0.137f, 1.0f,
+			0.055f, 0.953f, 0.042f, 1.0f,
+			0.714f, 0.505f, 0.345f, 1.0f,
+			0.783f, 0.290f, 0.734f, 1.0f,
+			0.722f, 0.645f, 0.174f, 1.0f,
+			0.302f, 0.455f, 0.848f, 1.0f,
+			0.225f, 0.587f, 0.040f, 1.0f, //470
+			0.517f, 0.713f, 0.338f, 1.0f,
+			0.053f, 0.959f, 0.120f, 1.0f };
+	return LightSpherecolors;
+};
 
 void processInput(GLFWwindow *window)
 {
