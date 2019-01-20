@@ -33,4 +33,12 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="2k_earth_daymap.jpg">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="2k_sun.jpg">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

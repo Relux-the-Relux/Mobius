@@ -354,19 +354,8 @@ int main()
 		glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, &view[0][0]);
 
+		
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(sphere_VAO);
-		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(LightSphere_VAO);
-		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
-
-		AdjustVertexData(0.00001, 0.00001, LightSphereVertices);
-		glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
-		glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
-		glEnableVertexAttribArray(0); //Sphere is position2
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
 		i++;
 		if (i >= 60)
 		{
@@ -400,6 +389,19 @@ int main()
 			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 			i = 0;
 		}
+		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(sphere_VAO);
+		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(LightSphere_VAO);
+		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+		AdjustVertexData(0.00001, 0.00001, LightSphereVertices);
+		glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
+		glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0); //Sphere is position2
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+		
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
