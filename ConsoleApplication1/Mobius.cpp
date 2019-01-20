@@ -15,11 +15,15 @@
 #include <vector>
 #include <math.h>
 #include <stdio.h>
+#include <string>
+#include <fstream>
+#include <sstream>
 
 //Sphere Parameters
 #define radius 0.5
 #define stacks 8 
 #define slices 16
+#define kreisradius 2
 
 
 //LightSphere Parameters
@@ -48,7 +52,7 @@ const GLchar* vertexTextureShaderSource =
 "#version 440 core\n"
 "layout(location = 0) in vec3 aPos;"
 "layout(location = 1) in vec4 in_Color;"
-"layout(location = 3) in vec2 in_TexCoord;"
+"layout(location = 2) in vec2 in_TexCoord;"
 ""
 "out vec4 fragmentColor;"
 "out vec2 TexCoord;"
@@ -81,9 +85,11 @@ const GLchar* fragmentTextureShaderSource =
 "in vec4 fragmentColor;"
 "in vec2 TexCoord;"
 ""
+"uniform sampler2D texture1;"
+""
 "void main()"
 "{"
-"  out_color = fragmentColor;\n"
+"  out_color = texture(texture1, TexCoord);\n"
 "}";
 
 int screenWidth = 600;
@@ -105,7 +111,7 @@ float pi = 3.14159265358979323846;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
-void AdjustVertexData(float fXOffset, float fYOffset, std::vector<float> &LightSphereVertices);
+void AdjustVertexData(int lightposition, std::vector<float> &LightSphereCenters, std::vector<float> &LightSphere);
 
 void processInput(GLFWwindow *window);
 
@@ -120,6 +126,9 @@ std::vector<float> calculateSphereColors(int rootOfSphereColors);
 std::vector<float> calculateLightSphereVertices(int rootOfSphereVertices);
 std::vector<int> calculateLightSphereIndices(int rootOfSphereIndices);
 std::vector<float> calculateLightSphereColors(int rootOfSphereColors);
+std::vector<float> calculateLightSphereCenters(int rootOfMobiusColors);
+
+std::vector<float>GenerateSphereTexCoordinates();
 
 int main()
 {
@@ -184,12 +193,12 @@ int main()
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
 
-
+	glUseProgram(0);
 	//TEXTURED SHADER
 	unsigned int vertexTextureShader;
 	vertexTextureShader = glCreateShader(GL_VERTEX_SHADER);
 
-	glShaderSource(vertexTextureShader, 1, &vertexShaderSource, NULL);
+	glShaderSource(vertexTextureShader, 1, &vertexTextureShaderSource, NULL);
 	glCompileShader(vertexTextureShader);
 
 	glGetShaderiv(vertexTextureShader, GL_COMPILE_STATUS, &success);
@@ -202,8 +211,16 @@ int main()
 
 	unsigned int fragmentTextureShader;
 	fragmentTextureShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentTextureShader, 1, &fragmentShaderSource, NULL);
+	glShaderSource(fragmentTextureShader, 1, &fragmentTextureShaderSource, NULL);
 	glCompileShader(fragmentTextureShader);
+
+	glGetShaderiv(fragmentTextureShader, GL_COMPILE_STATUS, &success);
+
+	if (!success)
+	{
+		glGetShaderInfoLog(fragmentTextureShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
 
 	unsigned int shaderTextureProgram;
 	shaderTextureProgram = glCreateProgram();
@@ -216,7 +233,9 @@ int main()
 	glDeleteShader(vertexTextureShader);
 	glDeleteShader(fragmentTextureShader);
 
+	glUseProgram(shaderTextureProgram);
 
+	glUseProgram(shaderProgram);
 	//camera matrix
 	glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
@@ -239,6 +258,7 @@ int main()
 	std::vector<float> LightSphereVertices = calculateLightSphereVertices(160 * 3);
 	std::vector<int> LightSphereIndices = calculateLightSphereIndices(272);
 	std::vector<float> LightSphereColors = calculateLightSphereColors(160 * 4);
+	std::vector<float> LightSphereCenters = calculateLightSphereCenters(360 * 3);
 
 
 	// ids for mobius
@@ -273,10 +293,14 @@ int main()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * mobiusIndices.size(), &mobiusIndices.front(), GL_STATIC_DRAW);
 
 
+	glUseProgram(shaderTextureProgram);
+	glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "view"), 1, GL_FALSE, &view[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "projection"), 1, GL_FALSE, &proj[0][0]);
 	// ids for sphere
 	GLuint  sphere_VAO;
 	GLuint  sphere_EBO;
 	GLuint  sphere_VBOcoords;
+	GLuint  sphere_VBOtex;
 
 	//sphere
 	glGenVertexArrays(1, &sphere_VAO);
@@ -302,13 +326,46 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphere_EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * sphereIndices.size(), &sphereIndices.front(), GL_STATIC_DRAW);
 
+	//Sphere Texture Coordinates
+	std::vector<float> texCoords = GenerateSphereTexCoordinates();
+	glGenBuffers(1, &sphere_VBOtex);
+	glBindBuffer(GL_ARRAY_BUFFER, sphere_VBOtex);
+	glBufferData(GL_ARRAY_BUFFER, 4 * texCoords.size(), &texCoords.front(), GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glEnableVertexAttribArray(2);
 
+	//EarthTexture
+	unsigned int textureEarth;
+	glGenTextures(1, &textureEarth);
+	glBindTexture(GL_TEXTURE_2D, textureEarth); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// load image, create texture and generate mipmaps
+	int width, height, nrChannels;
+	// The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
+	unsigned char *data = stbi_load(std::string("2k_earth_daymap.jpg").c_str(), &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
 
+	std::cout << "test" << std::endl;
 
 	// ids for LightSphere
 	GLuint  LightSphere_VAO;
 	GLuint  LightSphere_EBO;
 	GLuint  LightSphere_VBOcoords;
+	GLuint  LightSphere_VBOtex;
 
 	//Lightsphere
 	glGenVertexArrays(1, &LightSphere_VAO);
@@ -317,7 +374,7 @@ int main()
 	//Lightsphere
 	glGenBuffers(1, &LightSphere_VBOcoords);
 	glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
-	glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
 	glEnableVertexAttribArray(0); //Sphere is position2
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
@@ -325,14 +382,53 @@ int main()
 	GLuint colorbufferLightSphere;
 	glGenBuffers(1, &colorbufferLightSphere);
 	glBindBuffer(GL_ARRAY_BUFFER, colorbufferLightSphere);
-	glBufferData(GL_ARRAY_BUFFER, 6 * LightSphereColors.size(), &LightSphereColors.front(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 6 * LightSphereColors.size(), &LightSphereColors.front(), GL_DYNAMIC_DRAW);
 	glEnableVertexAttribArray(1); //Sphere colors is position3
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	//LightSphere Indices
 	glGenBuffers(1, &LightSphere_EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,LightSphere_EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * LightSphereIndices.size(), &LightSphereIndices.front(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * LightSphereIndices.size(), &LightSphereIndices.front(), GL_DYNAMIC_DRAW);
+
+	std::cout << "test" << std::endl;
+
+	//LightSphereTexcoordinates
+	glGenBuffers(1, &LightSphere_VBOtex);
+	glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOtex);
+	glBufferData(GL_ARRAY_BUFFER, 4 * texCoords.size(), &texCoords.front(), GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glEnableVertexAttribArray(2);
+
+	std::cout << "test" << std::endl;
+
+	//Sun Texture
+	unsigned int textureSun;
+	glGenTextures(1, &textureSun);
+	glBindTexture(GL_TEXTURE_2D, textureSun); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
+	// set the texture wrapping parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// set texture filtering parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// load image, create texture and generate mipmaps
+	int width2, height2, nrChannels2;
+	// The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
+	unsigned char *data2 = stbi_load(std::string("2k_sun.jpg").c_str(), &width2, &height2, &nrChannels2, 0);
+	std::cout << "test" << std::endl;
+	if (data2)
+	{
+		std::cout << "test" << std::endl;
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width2, height2, 0, GL_RGB, GL_UNSIGNED_BYTE, data2);
+		std::cout << "test" << std::endl;
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data2);
 
 	std::cout << "test" << std::endl;
 	int i = 0;
@@ -353,12 +449,15 @@ int main()
 		
 		glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, &view[0][0]);
-
 		
+
 		glBindVertexArray(VAO);
 		i++;
+		int lightsphereposition = 0;
 		if (i >= 60)
 		{
+			
+			//mobius Farben
 			float s = mobiusColors.at(0);
 			float t = mobiusColors.at(1);
 			float u = mobiusColors.at(2);
@@ -389,19 +488,37 @@ int main()
 			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 			i = 0;
 		}
+
+		glUseProgram(shaderProgram);
 		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(sphere_VAO);
+
+		glUseProgram(shaderTextureProgram);
+		glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "view"), 1, GL_FALSE, &view[0][0]);
+		glBindTexture(GL_TEXTURE_2D, textureEarth);
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+		
 		glBindVertexArray(LightSphere_VAO);
+
+		//Umkreis der Sonne
+		lightsphereposition = lightsphereposition + 3;
+		AdjustVertexData(lightsphereposition, LightSphereCenters, LightSphereVertices);
+		glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
+		glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0); //Sphere is position2
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+		if (lightsphereposition > LightSphereCenters.size() / 3) { lightsphereposition = 3; };
+
+		glBindTexture(GL_TEXTURE_2D, textureSun);
 		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-		AdjustVertexData(0.00001, 0.00001, LightSphereVertices);
 		glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
 		glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
 		glEnableVertexAttribArray(0); //Sphere is position2
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-		
+		glUseProgram(0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -410,19 +527,25 @@ int main()
 	return 0;
 }
 
-void AdjustVertexData(float fXOffset, float fYOffset, std::vector<float> &LightSphereVertices)
+void AdjustVertexData(int lightposition, std::vector<float> &LightSphereCenters, std::vector<float> &LightSphere)
 {
-    
-    for(int iVertex = 0; iVertex < LightSphereVertices.size(); iVertex += 1)
-    {
-        LightSphereVertices[iVertex] += fXOffset;
-		//TODO
-        //LightSphereVertices[iVertex + 1] += fYOffset;
-		//LightSphereVertices[iVertex + 2] += fYOffset;
-
-    }
-        
-    
+	std::vector<float> temp;
+	for (unsigned int stackNumber = 0; stackNumber <= stacksLight; ++stackNumber)
+	{
+		for (unsigned int sliceNumber = 0; sliceNumber <= slicesLight; ++sliceNumber)
+		{
+			float theta = stackNumber * pi / stacksLight;
+			float phi = sliceNumber * 2 * pi / slicesLight;
+			float sinTheta = std::sin(theta);
+			float sinPhi = std::sin(phi);
+			float cosTheta = std::cos(theta);
+			float cosPhi = std::cos(phi);
+			temp.push_back(radiusLight * cosPhi * sinTheta + LightSphereCenters.at(lightposition));
+			temp.push_back(radiusLight * sinPhi * sinTheta + LightSphereCenters.at(lightposition + 1));
+			temp.push_back(radiusLight * cosTheta + LightSphereCenters.at(lightposition + 2));
+		}
+	}
+	LightSphere = temp;
 }
 
 
@@ -479,6 +602,21 @@ std::vector<float> calculateSphereVertices(int rootOfVertices) {
 	return sphere;
 }
 
+std::vector<float> calculateLightSphereCenters(int rootOfVertices) {
+	std::vector<float> LightSphereCenters;
+	float phi = 0;
+	while (phi <= 6 * pi) {
+		float x = kreisradius * sin(phi);
+		float y = kreisradius * cos(phi);
+		float z = kreisradius;
+		LightSphereCenters.push_back(x);
+		LightSphereCenters.push_back(y);
+		LightSphereCenters.push_back(z);
+		phi = phi + 0.1;
+	}
+	return LightSphereCenters;
+}
+
 std::vector<float> calculateLightSphereVertices(int rootOfVertices) {
 	std::vector<float> LightSphere;
 	for (unsigned int stackNumber = 0; stackNumber <= stacksLight; ++stackNumber)
@@ -491,9 +629,9 @@ std::vector<float> calculateLightSphereVertices(int rootOfVertices) {
 			float sinPhi = std::sin(phi);
 			float cosTheta = std::cos(theta);
 			float cosPhi = std::cos(phi);
-			LightSphere.push_back(radiusLight * cosPhi * sinTheta +1.5);
-			LightSphere.push_back(radiusLight * sinPhi * sinTheta +1.5);
-			LightSphere.push_back(radiusLight * cosTheta +1.5);
+			LightSphere.push_back(radiusLight * cosPhi * sinTheta + kreisradius);
+			LightSphere.push_back(radiusLight * sinPhi * sinTheta + kreisradius);
+			LightSphere.push_back(radiusLight * cosTheta + kreisradius);
 		}
 	}
 	return LightSphere;
@@ -1748,6 +1886,20 @@ std::vector<float>calculateLightSphereColors(int rootOfColors) {
 			0.053f, 0.959f, 0.120f, 1.0f };
 	return LightSpherecolors;
 };
+
+std::vector<float> GenerateSphereTexCoordinates()
+{
+	std::vector<float> TexCoord;
+	for (int i = 0; i <= stacks;i++)
+	{
+		for(int j = 0; j <= slices;j++)
+		{
+			TexCoord.push_back((j*1.0f)/(slices*1.0f));
+			TexCoord.push_back(1.0f - (i*1.0f) / (stacks*1.0f));
+		}
+	}
+	return TexCoord;
+}
 
 void processInput(GLFWwindow *window)
 {
