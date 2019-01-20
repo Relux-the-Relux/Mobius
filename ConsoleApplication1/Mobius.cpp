@@ -335,6 +335,7 @@ int main()
 	glEnableVertexAttribArray(2);
 
 	//EarthTexture
+	
 	unsigned int textureEarth;
 	glGenTextures(1, &textureEarth);
 	glBindTexture(GL_TEXTURE_2D, textureEarth); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
@@ -403,6 +404,7 @@ int main()
 	std::cout << "test" << std::endl;
 
 	//Sun Texture
+	
 	unsigned int textureSun;
 	glGenTextures(1, &textureSun);
 	glBindTexture(GL_TEXTURE_2D, textureSun); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
@@ -432,6 +434,7 @@ int main()
 
 	std::cout << "test" << std::endl;
 	int i = 0;
+	int lightsphereposition = 0;
 	while (!glfwWindowShouldClose(window))
 	{
 		// per-frame time logic
@@ -453,7 +456,7 @@ int main()
 
 		glBindVertexArray(VAO);
 		i++;
-		int lightsphereposition = 0;
+		
 		if (i >= 60)
 		{
 			
@@ -486,7 +489,6 @@ int main()
 			glBufferData(GL_ARRAY_BUFFER, 6 * mobiusColors.size(), &mobiusColors.front(), GL_STATIC_DRAW);
 			glEnableVertexAttribArray(1);
 			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
-			i = 0;
 		}
 
 		glUseProgram(shaderProgram);
@@ -495,21 +497,25 @@ int main()
 
 		glUseProgram(shaderTextureProgram);
 		glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "view"), 1, GL_FALSE, &view[0][0]);
+
 		glBindTexture(GL_TEXTURE_2D, textureEarth);
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
 		
 		glBindVertexArray(LightSphere_VAO);
-
-		//Umkreis der Sonne
-		lightsphereposition = lightsphereposition + 3;
-		AdjustVertexData(lightsphereposition, LightSphereCenters, LightSphereVertices);
-		glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
-		glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
-		glEnableVertexAttribArray(0); //Sphere is position2
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-		if (lightsphereposition > LightSphereCenters.size() / 3) { lightsphereposition = 3; };
-
+		if (i >= 60)
+		{
+			//Umkreis der Sonne
+			lightsphereposition = lightsphereposition + 3;
+			AdjustVertexData(lightsphereposition, LightSphereCenters, LightSphereVertices);
+			glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOcoords);
+			glBufferData(GL_ARRAY_BUFFER, 4 * LightSphereVertices.size(), &LightSphereVertices.front(), GL_DYNAMIC_DRAW);
+			glEnableVertexAttribArray(0); //Sphere is position2
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+			if (lightsphereposition > LightSphereCenters.size() / 3) { lightsphereposition = 3; };
+			i = 0;
+		}
+		
 		glBindTexture(GL_TEXTURE_2D, textureSun);
 		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
 
