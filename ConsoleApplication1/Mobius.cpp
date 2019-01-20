@@ -431,6 +431,7 @@ int main()
 		std::cout << "Failed to load texture" << std::endl;
 	}
 	stbi_image_free(data2);
+	
 
 	std::cout << "test" << std::endl;
 	int i = 0;
@@ -491,6 +492,7 @@ int main()
 			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		}
 
+
 		glUseProgram(shaderProgram);
 		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(sphere_VAO);
@@ -498,6 +500,8 @@ int main()
 		glUseProgram(shaderTextureProgram);
 		glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "view"), 1, GL_FALSE, &view[0][0]);
 
+		glUniform1i(glGetUniformLocation(shaderTextureProgram, "texture1"), 0);
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureEarth);
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
@@ -516,6 +520,8 @@ int main()
 			i = 0;
 		}
 		
+		glUniform1i(glGetUniformLocation(shaderTextureProgram, "texture1"), 1);
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, textureSun);
 		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
 
