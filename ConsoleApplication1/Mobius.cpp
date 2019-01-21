@@ -260,6 +260,9 @@ int main()
 	GLuint  EBO;
 	GLuint  VBOcoords;
 
+	glEnable( GL_DEPTH_TEST );          // activate Z-Buffer and DepthTest
+
+
 
 
 	// create mobius vertex array object
