@@ -605,7 +605,7 @@ std::vector<float> calculateLightSphereCenters(int rootOfVertices) {
 	while (phi <= 6 * pi) {
 		float x = kreisradius * sin(phi);
 		float y = kreisradius * cos(phi);
-		float z = kreisradius;
+		float z = 0.0;
 		LightSphereCenters.push_back(x);
 		LightSphereCenters.push_back(y);
 		LightSphereCenters.push_back(z);
