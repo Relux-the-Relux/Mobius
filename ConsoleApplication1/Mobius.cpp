@@ -110,6 +110,8 @@ float pi = 3.14159265358979323846;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 void AdjustVertexData(int lightposition, std::vector<float> &LightSphereCenters, std::vector<float> &LightSphere);
+void RotateEarth(std::vector<float>&sphereVertices);
+
 
 void processInput(GLFWwindow *window);
 
@@ -260,7 +262,7 @@ int main()
 	GLuint  EBO;
 	GLuint  VBOcoords;
 
-	glEnable( GL_DEPTH_TEST );          // activate Z-Buffer and DepthTest
+	glEnable(GL_DEPTH_TEST);          // activate Z-Buffer and DepthTest
 
 
 
@@ -491,6 +493,18 @@ int main()
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
 
+		glBindVertexArray(sphere_VAO);
+		if (i >= 60)
+		{
+			//Rotation der Erde
+			RotateEarth(sphereVertices);
+			glBindBuffer(GL_ARRAY_BUFFER, sphere_VBOcoords);
+			glBufferData(GL_ARRAY_BUFFER, 4 * sphereVertices.size(), &sphereVertices.front(), GL_DYNAMIC_DRAW);
+			glEnableVertexAttribArray(0); //Sphere is position2
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+		}
+
+
 		glBindVertexArray(LightSphere_VAO);
 		if (i >= 60)
 		{
@@ -522,6 +536,25 @@ int main()
 
 	glfwTerminate();
 	return 0;
+}
+
+void RotateEarth(std::vector<float> &sphere)
+{
+	std::vector<float> temp;
+	int i = 0;
+	float a = pi / 360;
+
+	while (i < sphere.size())
+	{
+		float x = cos(a)*sphere.at(i) - sin(a)*sphere.at(i + 1);
+		float y = sin(a)*sphere.at(i) + cos(a)*sphere.at(i + 1);
+		float z = sphere.at(i + 2);
+		temp.push_back(x);
+		temp.push_back(y);
+		temp.push_back(z);
+		i = i + 3;
+	}
+	sphere = temp;
 }
 
 void AdjustVertexData(int lightposition, std::vector<float> &LightSphereCenters, std::vector<float> &LightSphere)
