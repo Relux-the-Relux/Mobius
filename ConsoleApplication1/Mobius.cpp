@@ -643,13 +643,13 @@ std::vector<int> calculateMobiusIndices(int rootOfIndices) {
 		mobiusIndices.push_back(i);
 		i++;
 		if (i == 64) {
-			i = 2;
+			i = 0;
 			mobiusIndices.push_back(i);
 			i = 62;
 			mobiusIndices.push_back(i);
-			i = 1;
+			i = 0;
 			mobiusIndices.push_back(i);
-			i = 2;
+			i = 1;
 			mobiusIndices.push_back(i);
 			break;
 		}
