@@ -173,6 +173,12 @@
   <ItemGroup>
     <Image Include="2k_earth_daymap.jpg" />
     <Image Include="2k_sun.jpg" />
+    <Image Include="bkg1_back.png" />
+    <Image Include="bkg1_bot.png" />
+    <Image Include="bkg1_front.png" />
+    <Image Include="bkg1_left.png" />
+    <Image Include="bkg1_right.png" />
+    <Image Include="bkg1_top.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

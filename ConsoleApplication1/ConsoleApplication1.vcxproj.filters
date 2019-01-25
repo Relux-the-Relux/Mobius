@@ -40,5 +40,23 @@
     <Image Include="2k_sun.jpg">
       <Filter>Ressourcendateien</Filter>
     </Image>
+    <Image Include="bkg1_front.png">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="bkg1_left.png">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="bkg1_right.png">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="bkg1_top.png">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="bkg1_back.png">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
+    <Image Include="bkg1_bot.png">
+      <Filter>Ressourcendateien</Filter>
+    </Image>
   </ItemGroup>
 </Project>
