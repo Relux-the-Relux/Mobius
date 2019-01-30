@@ -34,8 +34,11 @@ const GLchar* vertexShaderSource =
 "#version 440 core\n"
 "layout(location = 0) in vec3 aPos;"
 "layout(location = 1) in vec4 in_Color;"
+"layout(location = 2) in vec3 in_Normal;"
 ""
 "out vec4 fragmentColor;"
+"out vec3 normal;"
+"out vec3 fragPos;"
 ""
 "uniform mat4 view;"
 "uniform mat4 projection;"
@@ -44,9 +47,35 @@ const GLchar* vertexShaderSource =
 "{"
 "	gl_Position = projection * view * vec4(aPos, 1.0);"
 "   fragmentColor = in_Color;"
+"	normal = in_Normal;"
+"	fragPos = aPos;"
 "}";
 
 const GLchar* vertexTextureShaderSource =
+"#version 440 core\n"
+"layout(location = 0) in vec3 aPos;"
+"layout(location = 1) in vec4 in_Color;"
+"layout(location = 2) in vec2 in_TexCoord;"
+"layout(location = 3) in vec3 in_Normal;"
+""
+"out vec4 fragmentColor;"
+"out vec2 TexCoord;"
+"out vec3 normal;"
+"out vec3 fragPos;"
+""
+"uniform mat4 view;"
+"uniform mat4 projection;"
+""
+"void main()"
+"{"
+"	gl_Position = projection * view * vec4(aPos, 1.0);"
+"   fragmentColor = in_Color;"
+"	TexCoord = in_TexCoord;"
+"	normal = in_Normal;"
+"	fragPos = aPos;"
+"}";
+
+const GLchar* vertexLightShaderSource =
 "#version 440 core\n"
 "layout(location = 0) in vec3 aPos;"
 "layout(location = 1) in vec4 in_Color;"
@@ -86,13 +115,51 @@ const GLchar* fragmentShaderSource =
 "out vec4 out_color;\n"
 ""
 "in vec4 fragmentColor;"
+"in vec3 normal;"
+"in vec3 fragPos;"
+""
+"uniform vec3 lightPos;"
 ""
 "void main()"
 "{"
-"  out_color = fragmentColor;\n"
+""
+"	vec3 ambient = vec3(0.1,0.1,0.1);"
+""
+"	vec3 lightDir = normalize(lightPos - fragPos);"
+"	float diff = max(dot(normal, lightDir), 0.0);"
+"	vec3 diffuse = vec3(diff,diff,diff);"
+"	vec3 totalLight = ambient + diffuse;"
+""
+"  out_color = vec4(totalLight, 1.0) * fragmentColor;"
 "}";
 
 const GLchar* fragmentTextureShaderSource =
+"#version 440 core\n"
+"out vec4 out_color;\n"
+""
+"in vec4 fragmentColor;"
+"in vec2 TexCoord;"
+"in vec3 normal;"
+"in vec3 fragPos;"
+""
+"uniform sampler2D texture1;"
+"uniform vec3 lightPos;"
+""
+"void main()"
+"{"
+""
+"	vec3 ambient = vec3(0.2, 0.2,0.2);"
+""
+"	vec3 norm = normalize(normal);"
+"	vec3 lightDir = normalize(lightPos - fragPos);"
+"	float diff = max(dot(norm, lightDir), 0.0);"
+"	vec3 diffuse = vec3(diff,diff,diff);"
+"	vec3 totalLight = ambient + diffuse;"
+""
+"  out_color = vec4(totalLight, 1.0) * texture(texture1, TexCoord);\n"
+"}";
+
+const GLchar* fragmentLightShaderSource =
 "#version 440 core\n"
 "out vec4 out_color;\n"
 ""
@@ -105,7 +172,6 @@ const GLchar* fragmentTextureShaderSource =
 "{"
 "  out_color = texture(texture1, TexCoord);\n"
 "}";
-
 
 const GLchar* fragmentSkyboxShaderSource =
 "#version 440 core\n"
@@ -141,7 +207,9 @@ float pi = 3.14159265358979323846;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 void AdjustVertexData(int lightposition, std::vector<float> &LightSphereCenters, std::vector<float> &LightSphere);
+int main();
 void RotateEarth(std::vector<float>&sphereVertices);
+
 
 
 void processInput(GLFWwindow *window);
@@ -158,6 +226,9 @@ std::vector<int> calculateLightSphereIndices(int rootOfSphereIndices);
 std::vector<float> calculateLightSphereCenters(int rootOfMobiusColors);
 
 std::vector<float>GenerateSphereTexCoordinates();
+
+std::vector<float> calculateMobiusNormals(std::vector<int> &mobiusIndices, std::vector<float> &mobiusVertices);
+std::vector<float> calculateEarthNormals(std::vector<float> &sphereVertices);
 
 unsigned int loadCubemap(std::vector<std::string> faces);
 
@@ -212,6 +283,14 @@ int main()
 	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
 	glCompileShader(fragmentShader);
 
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+
+	if (!success)
+	{
+		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+
 	unsigned int shaderProgram;
 	shaderProgram = glCreateProgram();
 
@@ -251,7 +330,7 @@ int main()
 	if (!success)
 	{
 		glGetShaderInfoLog(fragmentTextureShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
 	}
 
 	unsigned int shaderTextureProgram;
@@ -266,7 +345,7 @@ int main()
 	glDeleteShader(fragmentTextureShader);
 
 	glUseProgram(shaderTextureProgram);
-
+	
 	//SKYBOX SHADER
 	unsigned int vertexSkyboxShader;
 	vertexSkyboxShader = glCreateShader(GL_VERTEX_SHADER);
@@ -308,6 +387,8 @@ int main()
 
 	glUseProgram(shaderSkyboxProgram);
 
+	//SUN SHADER
+
 	glUseProgram(shaderProgram);
 
 	//camera matrix
@@ -332,9 +413,13 @@ int main()
 	std::vector<int> LightSphereIndices = calculateLightSphereIndices(272);
 	std::vector<float> LightSphereCenters = calculateLightSphereCenters(360 * 3);
 
+	std::vector<float> mobiusNormals = calculateMobiusNormals(mobiusIndices, mobiusVertices);
+	std::vector<float> earthNormals = calculateEarthNormals(sphereVertices);
+
 
 	// ids for mobius
 	GLuint  VAO;
+	GLuint  VBOnormals;
 	GLuint  EBO;
 	GLuint  VBOcoords;
 
@@ -362,18 +447,78 @@ int main()
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
+	//create normals
+	glGenBuffers(1, &VBOnormals);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOnormals);
+	glBufferData(GL_ARRAY_BUFFER, 4 * mobiusNormals.size(), &mobiusNormals.front(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
 	// create buffer object for indices
 	glGenBuffers(1, &EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * mobiusIndices.size(), &mobiusIndices.front(), GL_STATIC_DRAW);
 
+	// ids for second mobius
+	GLuint  VAO_back;
+	GLuint  VBOnormals_back;
+	GLuint  EBO_back;
+	GLuint  VBOcoords_back;
+
+
+	// create mobius vertex array object
+	glGenVertexArrays(1, &VAO_back);
+	glBindVertexArray(VAO_back);
+
+	// create coords object
+	glGenBuffers(1, &VBOcoords_back);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOcoords_back);
+	glBufferData(GL_ARRAY_BUFFER, 4 * mobiusVertices.size(), &mobiusVertices.front(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	// create color buffer
+	GLuint colorbuffer_back;
+	glGenBuffers(1, &colorbuffer_back);
+	glBindBuffer(GL_ARRAY_BUFFER, colorbuffer_back);
+	glBufferData(GL_ARRAY_BUFFER, 6 * mobiusColors.size(), &mobiusColors.front(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	//create normals
+	std::vector<float> mobiusNormals_back;
+	for(int j = 0; j < mobiusNormals.size();j++)
+	{
+		mobiusNormals_back.push_back(-mobiusNormals[j]);
+	}
+
+	glGenBuffers(1, &VBOnormals_back);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOnormals_back);
+	glBufferData(GL_ARRAY_BUFFER, 4 * mobiusNormals_back.size(), &mobiusNormals_back.front(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+	// create buffer object for indices
+	std::vector<int> mobiusIndices_back;
+	for(int j = 0; j < mobiusIndices.size(); j += 3)
+	{
+		mobiusIndices_back.push_back(mobiusIndices[j + 2]);
+		mobiusIndices_back.push_back(mobiusIndices[j + 1]);
+		mobiusIndices_back.push_back(mobiusIndices[j]);
+	}
+	glGenBuffers(1, &EBO_back);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO_back);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * mobiusIndices_back.size(), &mobiusIndices_back.front(), GL_STATIC_DRAW);
 
 	glUseProgram(shaderTextureProgram);
 	glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "view"), 1, GL_FALSE, &view[0][0]);
 	glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "projection"), 1, GL_FALSE, &proj[0][0]);
+
+
 	// ids for sphere
 	GLuint  sphere_VAO;
 	GLuint  sphere_EBO;
+	GLuint  sphere_VBOnormals;
 	GLuint  sphere_VBOcoords;
 	GLuint  sphere_VBOtex;
 
@@ -402,9 +547,16 @@ int main()
 	glBufferData(GL_ARRAY_BUFFER, 4 * texCoords.size(), &texCoords.front(), GL_STATIC_DRAW);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glEnableVertexAttribArray(2);
+	std::cout << "test1" << std::endl;
+	//Sphere Texture Coordinates
+	glGenBuffers(1, &sphere_VBOnormals);
+	glBindBuffer(GL_ARRAY_BUFFER, sphere_VBOnormals);
+	glBufferData(GL_ARRAY_BUFFER, 4 * earthNormals.size(), &earthNormals.front(), GL_STATIC_DRAW);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glEnableVertexAttribArray(3);
+	std::cout << "test2" << std::endl;
 
 	//EarthTexture
-
 	unsigned int textureEarth;
 	glGenTextures(1, &textureEarth);
 	glBindTexture(GL_TEXTURE_2D, textureEarth); // all upcoming GL_TEXTURE_2D operations now have effect on this texture object
@@ -562,6 +714,7 @@ int main()
 	unsigned int cubemapTexture = loadCubemap(faces);
 	glUniform1i(glGetUniformLocation(shaderSkyboxProgram, std::string("skybox").c_str()), 0);
 
+	
 	std::cout << "test" << std::endl;
 	int i = 0;
 	int lightsphereposition = 0;
@@ -577,12 +730,13 @@ int main()
 
 		glClearColor(0.0f, 0.5f, 0.0f, 1.0f); //green background
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
 		glUseProgram(shaderProgram);
 
 		glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, &view[0][0]);
-
+		glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), LightSphereCenters[lightsphereposition], LightSphereCenters[lightsphereposition + 1], LightSphereCenters[lightsphereposition + 2]);
 
 		glBindVertexArray(VAO);
 		i++;
@@ -624,12 +778,28 @@ int main()
 
 		glUseProgram(shaderProgram);
 		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
+
+		glBindVertexArray(VAO_back);
+
+		if (i >= 60)
+		{
+			glBindBuffer(GL_ARRAY_BUFFER, colorbuffer_back);
+			glBufferData(GL_ARRAY_BUFFER, 6 * mobiusColors.size(), &mobiusColors.front(), GL_STATIC_DRAW);
+			glEnableVertexAttribArray(1);
+			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+		}
+
+		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
+
+		glDisable(GL_CULL_FACE);
+
 		glBindVertexArray(sphere_VAO);
 
 		glUseProgram(shaderTextureProgram);
 		glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "view"), 1, GL_FALSE, &view[0][0]);
 
 		glUniform1i(glGetUniformLocation(shaderTextureProgram, "texture1"), 0);
+		glUniform3f(glGetUniformLocation(shaderTextureProgram, "lightPos"), LightSphereCenters[lightsphereposition], LightSphereCenters[lightsphereposition + 1], LightSphereCenters[lightsphereposition + 2]);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureEarth);
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
@@ -644,8 +814,15 @@ int main()
 			glBufferData(GL_ARRAY_BUFFER, 4 * sphereVertices.size(), &sphereVertices.front(), GL_DYNAMIC_DRAW);
 			glEnableVertexAttribArray(0); //Sphere is position2
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-		}
 
+			earthNormals = calculateEarthNormals(sphereVertices);
+			glBindBuffer(GL_ARRAY_BUFFER, sphere_VBOnormals);
+			glBufferData(GL_ARRAY_BUFFER, 4 * earthNormals.size(), &earthNormals.front(), GL_STATIC_DRAW);
+			glEnableVertexAttribArray(3);
+			glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+			
+			
+		}
 
 		glBindVertexArray(LightSphere_VAO);
 		if (i >= 60)
@@ -671,13 +848,14 @@ int main()
 		glEnableVertexAttribArray(0); //Sphere is position2
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
+		
 		// draw skybox as last
 		glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 		glUseProgram(shaderSkyboxProgram);
 		glm::mat4 viewSky = glm::mat4(glm::mat3(view)); // remove translation from the view matrix
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, &viewSky[0][0]);
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, &proj[0][0]);
-	
+
 		// skybox cube
 		glBindVertexArray(skyboxVAO);
 		glActiveTexture(GL_TEXTURE0);
@@ -874,13 +1052,14 @@ std::vector<int> calculateSphereIndices(int rootOfIndices) {
 	int i = 0;
 
 	while (i < sphereIndices.size()) {
-		sphereIndices2.push_back(sphereIndices.at(i));
-		i++;
-		sphereIndices2.push_back(sphereIndices.at(i));
-		i++;
-		if (i >= sphereIndices.size()) {
+		if (i == sphereIndices.size() - 2) {
 			break;
 		}
+		sphereIndices2.push_back(sphereIndices.at(i));
+		i++;
+		sphereIndices2.push_back(sphereIndices.at(i));
+		i++;
+
 		sphereIndices2.push_back(sphereIndices.at(i));
 		i--;
 	}
@@ -912,13 +1091,13 @@ std::vector<int> calculateLightSphereIndices(int rootOfIndices) {
 	int i = 0;
 
 	while (i < sphereIndices.size()) {
-		sphereIndices2.push_back(sphereIndices.at(i));
-		i++;
-		sphereIndices2.push_back(sphereIndices.at(i));
-		i++;
-		if (i >= sphereIndices.size()) {
+		if (i == sphereIndices.size() - 2) {
 			break;
 		}
+		sphereIndices2.push_back(sphereIndices.at(i));
+		i++;
+		sphereIndices2.push_back(sphereIndices.at(i));
+		i++;
 		sphereIndices2.push_back(sphereIndices.at(i));
 		i--;
 	}
@@ -934,9 +1113,6 @@ std::vector<int> calculateLightSphereIndices(int rootOfIndices) {
 	};
 	return sphereIndices2;
 }
-
-
-
 
 
 
@@ -1235,3 +1411,87 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 	return textureID;
 }
+
+
+std::vector<float> calculateEarthNormals(std::vector<float> &sphereVertices) {
+	std::vector<float> earthNormals;
+	for(int i = 0; i < sphereVertices.size(); i += 3)
+	{
+		glm::vec3 direction = glm::vec3(sphereVertices[i], sphereVertices[i + 1], sphereVertices[i + 2]);
+		glm::vec3 normal = glm::normalize(direction);
+		earthNormals.push_back(normal.x);
+		earthNormals.push_back(normal.y);
+		earthNormals.push_back(normal.z);
+	}
+	return earthNormals;
+}
+
+std::vector<float>calculateMobiusNormals(std::vector<int> &mobiusIndices, std::vector<float> &mobiusVertices) {
+
+
+	std::vector<float> mobiusNormals(mobiusVertices.size());
+
+	int i = 0;
+	while (i < mobiusIndices.size()) {
+		int triangle1 = mobiusIndices.at(i);
+		int triangle2 = mobiusIndices.at(i + 1);
+		int triangle3 = mobiusIndices.at(i + 2);
+
+
+		float x1 = mobiusVertices.at(triangle2 * 3) - mobiusVertices.at(triangle1 * 3);
+		float y1 = mobiusVertices.at(triangle2 * 3 + 1) - mobiusVertices.at(triangle1 * 3 + 1);
+		float z1 = mobiusVertices.at(triangle2 * 3 + 2) - mobiusVertices.at(triangle1 * 3 + 2);
+		float x2 = mobiusVertices.at(triangle3 * 3) - mobiusVertices.at(triangle1 * 3);
+		float y2 = mobiusVertices.at(triangle3 * 3 + 1) - mobiusVertices.at(triangle1 * 3 + 1);
+		float z2 = mobiusVertices.at(triangle3 * 3 + 2) - mobiusVertices.at(triangle1 * 3 + 2);
+		glm::vec3 b = glm::vec3(x1, y1, z1);
+		glm::vec3 c = glm::vec3(x2, y2, z2);
+		//Kreuzprodukt
+		glm::vec3 normal = glm::cross(b, c);
+		//Einheitsvektor
+		mobiusNormals[triangle1 * 3] -= normal.x;
+		mobiusNormals[triangle1 * 3 + 1] -= normal.y;
+		mobiusNormals[triangle1 * 3 + 2] -= normal.z;
+
+
+		x1 = mobiusVertices.at(triangle3 * 3) - mobiusVertices.at(triangle2 * 3);
+		y1 = mobiusVertices.at(triangle3 * 3 + 1) - mobiusVertices.at(triangle2 * 3 + 1);
+		z1 = mobiusVertices.at(triangle3 * 3 + 2) - mobiusVertices.at(triangle2 * 3 + 2);
+		x2 = mobiusVertices.at(triangle1 * 3) - mobiusVertices.at(triangle2 * 3);
+		y2 = mobiusVertices.at(triangle1 * 3 + 1) - mobiusVertices.at(triangle2 * 3 + 1);
+		z2 = mobiusVertices.at(triangle1 * 3 + 2) - mobiusVertices.at(triangle2 * 3 + 2);
+		b = glm::vec3(x1, y1, z1);
+		c = glm::vec3(x2, y2, z2);
+		//Kreuzprodukt
+		normal = glm::cross(b, c);
+		//Einheitsvektor
+		mobiusNormals[triangle2 * 3] -= normal.x;
+		mobiusNormals[triangle2 * 3 + 1] -= normal.y;
+		mobiusNormals[triangle2 * 3 + 2] -= normal.z;
+
+		x1 = mobiusVertices.at(triangle1 * 3) - mobiusVertices.at(triangle3 * 3);
+		y1 = mobiusVertices.at(triangle1 * 3 + 1) - mobiusVertices.at(triangle3 * 3 + 1);
+		z1 = mobiusVertices.at(triangle1 * 3 + 2) - mobiusVertices.at(triangle3 * 3 + 2);
+		x2 = mobiusVertices.at(triangle2 * 3) - mobiusVertices.at(triangle3 * 3);
+		y2 = mobiusVertices.at(triangle2 * 3 + 1) - mobiusVertices.at(triangle3 * 3 + 1);
+		z2 = mobiusVertices.at(triangle2 * 3 + 2) - mobiusVertices.at(triangle3 * 3 + 2);
+		b = glm::vec3(x1, y1, z1);
+		c = glm::vec3(x2, y2, z2);
+		//Kreuzprodukt
+		normal = glm::cross(b, c);
+		//Einheitsvektor
+		mobiusNormals[triangle3 * 3] -= normal.x;
+		mobiusNormals[triangle3 * 3 + 1] -= normal.y;
+		mobiusNormals[triangle3 * 3 + 2] -= normal.z;
+
+		i = i + 3;
+	}
+	for (int j = 0; j < mobiusNormals.size(); j += 3) {
+		glm::vec3 newNormal = glm::normalize(glm::vec3(mobiusNormals[j], mobiusNormals[j+1], mobiusNormals[j+2]));
+		mobiusNormals[j] = newNormal.x;
+		mobiusNormals[j + 1] = newNormal.y;
+		mobiusNormals[j + 2] = newNormal.z;
+	}
+	return mobiusNormals;
+}
+
