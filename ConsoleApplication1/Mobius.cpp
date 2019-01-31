@@ -1492,6 +1492,7 @@ std::vector<float>calculateMobiusNormals(std::vector<int> &mobiusIndices, std::v
 		mobiusNormals[j + 1] = newNormal.y;
 		mobiusNormals[j + 2] = newNormal.z;
 	}
+	
 	return mobiusNormals;
 }
 
