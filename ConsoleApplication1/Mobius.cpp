@@ -346,6 +346,47 @@ int main()
 
 	glUseProgram(shaderTextureProgram);
 	
+	//LIGHT SHADER
+	unsigned int vertexLightShader;
+	vertexLightShader = glCreateShader(GL_VERTEX_SHADER);
+
+	glShaderSource(vertexLightShader, 1, &vertexLightShaderSource, NULL);
+	glCompileShader(vertexLightShader);
+
+	glGetShaderiv(vertexLightShader, GL_COMPILE_STATUS, &success);
+
+	if (!success)
+	{
+		glGetShaderInfoLog(vertexLightShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+
+	unsigned int fragmentLightShader;
+	fragmentLightShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentLightShader, 1, &fragmentLightShaderSource, NULL);
+	glCompileShader(fragmentLightShader);
+
+	glGetShaderiv(fragmentLightShader, GL_COMPILE_STATUS, &success);
+
+	if (!success)
+	{
+		glGetShaderInfoLog(fragmentLightShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+
+	unsigned int shaderLightProgram;
+	shaderLightProgram = glCreateProgram();
+
+	glAttachShader(shaderLightProgram, vertexLightShader);
+	glAttachShader(shaderLightProgram, fragmentLightShader);
+	glLinkProgram(shaderLightProgram);
+
+
+	glDeleteShader(vertexLightShader);
+	glDeleteShader(fragmentLightShader);
+
+	glUseProgram(shaderLightProgram);
+
 	//SKYBOX SHADER
 	unsigned int vertexSkyboxShader;
 	vertexSkyboxShader = glCreateShader(GL_VERTEX_SHADER);
@@ -406,14 +447,18 @@ int main()
 	std::vector<int> mobiusIndices = calculateMobiusIndices(64 * 3);
 	std::vector<float> mobiusColors = calculateMobiusColors(192 * 4);
 
+
 	std::vector<float> sphereVertices = calculateSphereVertices(160 * 3);
 	std::vector<int> sphereIndices = calculateSphereIndices(272);
-
+	
 	std::vector<float> LightSphereVertices = calculateLightSphereVertices(160 * 3);
 	std::vector<int> LightSphereIndices = calculateLightSphereIndices(272);
 	std::vector<float> LightSphereCenters = calculateLightSphereCenters(360 * 3);
 
 	std::vector<float> mobiusNormals = calculateMobiusNormals(mobiusIndices, mobiusVertices);
+	mobiusNormals[63 * 3] = mobiusNormals[62 * 3];
+	mobiusNormals[63 * 3+1] = mobiusNormals[62 * 3+1];
+	mobiusNormals[63 * 3+2] = mobiusNormals[62 * 3+2];
 	std::vector<float> earthNormals = calculateEarthNormals(sphereVertices);
 
 
@@ -582,6 +627,10 @@ int main()
 	stbi_image_free(data);
 
 	std::cout << "test" << std::endl;
+
+	glUseProgram(shaderLightProgram);
+	glUniformMatrix4fv(glGetUniformLocation(shaderLightProgram, "view"), 1, GL_FALSE, &view[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(shaderLightProgram, "projection"), 1, GL_FALSE, &proj[0][0]);
 
 	// ids for LightSphere
 	GLuint  LightSphere_VAO;
@@ -824,6 +873,8 @@ int main()
 			
 		}
 
+		glUseProgram(shaderLightProgram);
+		glUniformMatrix4fv(glGetUniformLocation(shaderTextureProgram, "view"), 1, GL_FALSE, &view[0][0]);
 		glBindVertexArray(LightSphere_VAO);
 		if (i >= 60)
 		{
@@ -838,7 +889,7 @@ int main()
 			i = 0;
 		}
 
-		glUniform1i(glGetUniformLocation(shaderTextureProgram, "texture1"), 1);
+		glUniform1i(glGetUniformLocation(shaderLightProgram, "texture1"), 1);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, textureSun);
 		glDrawElements(GL_TRIANGLES, LightSphereIndices.size(), GL_UNSIGNED_INT, 0);
@@ -973,7 +1024,7 @@ std::vector<float> calculateLightSphereCenters(int rootOfVertices) {
 	while (phi <= 6 * pi) {
 		float x = kreisradius * sin(phi);
 		float y = kreisradius * cos(phi);
-		float z = 0.0;
+		float z = 0;
 		LightSphereCenters.push_back(x);
 		LightSphereCenters.push_back(y);
 		LightSphereCenters.push_back(z);
