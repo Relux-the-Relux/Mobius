@@ -345,7 +345,7 @@ int main()
 	glDeleteShader(fragmentTextureShader);
 
 	glUseProgram(shaderTextureProgram);
-	
+
 	//LIGHT SHADER
 	unsigned int vertexLightShader;
 	vertexLightShader = glCreateShader(GL_VERTEX_SHADER);
@@ -450,15 +450,15 @@ int main()
 
 	std::vector<float> sphereVertices = calculateSphereVertices(160 * 3);
 	std::vector<int> sphereIndices = calculateSphereIndices(272);
-	
+
 	std::vector<float> LightSphereVertices = calculateLightSphereVertices(160 * 3);
 	std::vector<int> LightSphereIndices = calculateLightSphereIndices(272);
 	std::vector<float> LightSphereCenters = calculateLightSphereCenters(360 * 3);
 
 	std::vector<float> mobiusNormals = calculateMobiusNormals(mobiusIndices, mobiusVertices);
 	mobiusNormals[63 * 3] = mobiusNormals[62 * 3];
-	mobiusNormals[63 * 3+1] = mobiusNormals[62 * 3+1];
-	mobiusNormals[63 * 3+2] = mobiusNormals[62 * 3+2];
+	mobiusNormals[63 * 3 + 1] = mobiusNormals[62 * 3 + 1];
+	mobiusNormals[63 * 3 + 2] = mobiusNormals[62 * 3 + 2];
 	std::vector<float> earthNormals = calculateEarthNormals(sphereVertices);
 
 
@@ -532,7 +532,8 @@ int main()
 
 	//create normals
 	std::vector<float> mobiusNormals_back;
-	for(int j = 0; j < mobiusNormals.size();j++)
+	mobiusNormals_back = mobiusNormals;	
+	for (int j = 0; j < mobiusNormals.size(); j++)
 	{
 		mobiusNormals_back.push_back(-mobiusNormals[j]);
 	}
@@ -545,7 +546,7 @@ int main()
 
 	// create buffer object for indices
 	std::vector<int> mobiusIndices_back;
-	for(int j = 0; j < mobiusIndices.size(); j += 3)
+	for (int j = 0; j < mobiusIndices.size(); j += 3)
 	{
 		mobiusIndices_back.push_back(mobiusIndices[j + 2]);
 		mobiusIndices_back.push_back(mobiusIndices[j + 1]);
@@ -763,7 +764,7 @@ int main()
 	unsigned int cubemapTexture = loadCubemap(faces);
 	glUniform1i(glGetUniformLocation(shaderSkyboxProgram, std::string("skybox").c_str()), 0);
 
-	
+
 	std::cout << "test" << std::endl;
 	int i = 0;
 	int lightsphereposition = 0;
@@ -790,6 +791,7 @@ int main()
 		glBindVertexArray(VAO);
 		i++;
 
+		
 		if (i >= 60)
 		{
 
@@ -823,7 +825,7 @@ int main()
 			glEnableVertexAttribArray(1);
 			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		}
-
+		
 
 		glUseProgram(shaderProgram);
 		glDrawElements(GL_TRIANGLES, mobiusIndices.size(), GL_UNSIGNED_INT, 0);
@@ -869,8 +871,8 @@ int main()
 			glBufferData(GL_ARRAY_BUFFER, 4 * earthNormals.size(), &earthNormals.front(), GL_STATIC_DRAW);
 			glEnableVertexAttribArray(3);
 			glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-			
-			
+
+
 		}
 
 		glUseProgram(shaderLightProgram);
@@ -899,7 +901,7 @@ int main()
 		glEnableVertexAttribArray(0); //Sphere is position2
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-		
+
 		// draw skybox as last
 		glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 		glUseProgram(shaderSkyboxProgram);
@@ -1062,16 +1064,11 @@ std::vector<int> calculateMobiusIndices(int rootOfIndices) {
 		mobiusIndices.push_back(i);
 		i++;
 		if (i == 64) {
-			i = 0;
-			mobiusIndices.push_back(i);
-			i = 62;
-			mobiusIndices.push_back(i);
-			i = 0;
-			mobiusIndices.push_back(i);
-			i = 1;
-			mobiusIndices.push_back(i);
-			break;
-		}
+            i = 1;
+            mobiusIndices.push_back(i);
+            mobiusIndices.at(0) = 63;
+            break;
+        }
 		mobiusIndices.push_back(i);
 		i--;
 	}
@@ -1080,6 +1077,7 @@ std::vector<int> calculateMobiusIndices(int rootOfIndices) {
 	int temp = 0;
 	while (i < mobiusIndices.size()) {
 		i = i + 3;
+		if (i >= mobiusIndices.size()) { break; }
 		temp = mobiusIndices.at(i);
 		mobiusIndices.at(i) = mobiusIndices.at(i + 1);
 		mobiusIndices.at(i + 1) = temp;
@@ -1232,135 +1230,8 @@ std::vector<float>calculateMobiusColors(int rootOfColors) {
 	0.543f,  0.021f,  0.978f, 1.0f,
 	0.279f,  0.317f,  0.505f, 1.0f,
 	0.167f,  0.620f,  0.077f, 1.0f,
-	0.347f,  0.857f,  0.137f, 1.0f,
-	0.055f,  0.953f,  0.042f, 1.0f,
-	0.714f,  0.505f,  0.345f, 1.0f,
-	0.783f,  0.290f,  0.734f, 1.0f,
-	0.722f,  0.645f,  0.174f, 1.0f,
-	0.302f,  0.455f,  0.848f, 1.0f,
-	0.225f,  0.587f,  0.040f, 1.0f, //70
-	0.517f,  0.713f,  0.338f, 1.0f,
-	0.053f,  0.959f,  0.120f, 1.0f,
-	0.393f,  0.621f,  0.362f, 1.0f,
-	0.673f,  0.211f,  0.457f, 1.0f,
-	0.820f,  0.883f,  0.371f, 1.0f,
-	0.982f,  0.099f,  0.879f, 1.0f,
-	0.714f,  0.505f,  0.345f, 1.0f,
-	0.783f,  0.290f,  0.734f, 1.0f,
-	0.722f,  0.645f,  0.174f, 1.0f,
-	0.302f,  0.455f,  0.848f, 1.0f, //80
-	0.583f,  0.771f,  0.014f, 1.0f,
-	0.609f,  0.115f,  0.436f, 1.0f,
-	0.327f,  0.483f,  0.844f, 1.0f,
-	0.822f,  0.569f,  0.201f, 1.0f,
-	0.435f,  0.602f,  0.223f, 1.0f,
-	0.310f,  0.747f,  0.185f, 1.0f,
-	0.597f,  0.770f,  0.761f, 1.0f,
-	0.559f,  0.436f,  0.730f, 1.0f,
-	0.359f,  0.583f,  0.152f, 1.0f,
-	0.483f,  0.596f,  0.789f, 1.0f, //90
-	0.559f,  0.861f,  0.639f, 1.0f,
-	0.195f,  0.548f,  0.859f, 1.0f,
-	0.014f,  0.184f,  0.576f, 1.0f,
-	0.771f,  0.328f,  0.970f, 1.0f,
-	0.406f,  0.615f,  0.116f, 1.0f,
-	0.676f,  0.977f,  0.133f, 1.0f,
-	0.971f,  0.572f,  0.833f, 1.0f,
-	0.140f,  0.616f,  0.489f, 1.0f,
-	0.997f,  0.513f,  0.064f, 1.0f,
-	0.945f,  0.719f,  0.592f, 1.0f, //100
-	0.543f,  0.021f,  0.978f, 1.0f,
-	0.279f,  0.317f,  0.505f, 1.0f,
-	0.167f,  0.620f,  0.077f, 1.0f,
-	0.347f,  0.857f,  0.137f, 1.0f,
-	0.055f,  0.953f,  0.042f, 1.0f,
-	0.714f,  0.505f,  0.345f, 1.0f,
-	0.783f,  0.290f,  0.734f, 1.0f,
-	0.722f,  0.645f,  0.174f, 1.0f,
-	0.302f,  0.455f,  0.848f, 1.0f,
-	0.225f,  0.587f,  0.040f, 1.0f, //110
-	0.517f,  0.713f,  0.338f, 1.0f,
-	0.053f,  0.959f,  0.120f, 1.0f,
-	0.393f,  0.621f,  0.362f, 1.0f,
-	0.673f,  0.211f,  0.457f, 1.0f,
-	0.820f,  0.883f,  0.371f, 1.0f,
-	0.982f,  0.099f,  0.879f, 1.0f,
-	0.714f,  0.505f,  0.345f, 1.0f,
-	0.783f,  0.290f,  0.734f, 1.0f,
-	0.722f,  0.645f,  0.174f, 1.0f,
-	0.302f,  0.455f,  0.848f, 1.0f, //120
-	0.583f,  0.771f,  0.014f, 1.0f,
-	0.609f,  0.115f,  0.436f, 1.0f,
-	0.327f,  0.483f,  0.844f, 1.0f,
-	0.822f,  0.569f,  0.201f, 1.0f,
-	0.435f,  0.602f,  0.223f, 1.0f,
-	0.310f,  0.747f,  0.185f, 1.0f,
-	0.597f,  0.770f,  0.761f, 1.0f,
-	0.559f,  0.436f,  0.730f, 1.0f,
-	0.359f,  0.583f,  0.152f, 1.0f,
-	0.483f,  0.596f,  0.789f, 1.0f, //130
-	0.559f,  0.861f,  0.639f, 1.0f,
-	0.195f,  0.548f,  0.859f, 1.0f,
-	0.014f,  0.184f,  0.576f, 1.0f,
-	0.771f,  0.328f,  0.970f, 1.0f,
-	0.406f,  0.615f,  0.116f, 1.0f,
-	0.676f,  0.977f,  0.133f, 1.0f,
-	0.971f,  0.572f,  0.833f, 1.0f,
-	0.140f,  0.616f,  0.489f, 1.0f,
-	0.997f,  0.513f,  0.064f, 1.0f,
-	0.945f,  0.719f,  0.592f, 1.0f, //140
-	0.543f,  0.021f,  0.978f, 1.0f,
-	0.279f,  0.317f,  0.505f, 1.0f,
-	0.167f,  0.620f,  0.077f, 1.0f,
-	0.347f,  0.857f,  0.137f, 1.0f,
-	0.055f,  0.953f,  0.042f, 1.0f,
-	0.714f,  0.505f,  0.345f, 1.0f,
-	0.783f,  0.290f,  0.734f, 1.0f,
-	0.722f,  0.645f,  0.174f, 1.0f,
-	0.302f,  0.455f,  0.848f, 1.0f,
-	0.225f,  0.587f,  0.040f, 1.0f, //150
-	0.517f,  0.713f,  0.338f, 1.0f,
-	0.053f,  0.959f,  0.120f, 1.0f,
-	0.393f,  0.621f,  0.362f, 1.0f,
-	0.673f,  0.211f,  0.457f, 1.0f,
-	0.820f,  0.883f,  0.371f, 1.0f,
-	0.982f,  0.099f,  0.879f, 1.0f,
-	0.714f,  0.505f,  0.345f, 1.0f,
-	0.783f,  0.290f,  0.734f, 1.0f,
-	0.722f,  0.645f,  0.174f, 1.0f,
-	0.302f,  0.455f,  0.848f, 1.0f, //160
-	0.543f, 0.021f, 0.978f, 1.0f,
-	0.279f, 0.317f, 0.505f, 1.0f,
-	0.167f, 0.620f, 0.077f, 1.0f,
-	0.347f, 0.857f, 0.137f, 1.0f,
-	0.055f, 0.953f, 0.042f, 1.0f,
-	0.714f, 0.505f, 0.345f, 1.0f,
-	0.783f, 0.290f, 0.734f, 1.0f,
-	0.722f, 0.645f, 0.174f, 1.0f,
-	0.302f, 0.455f, 0.848f, 1.0f,
-	0.225f, 0.587f, 0.040f, 1.0f, //170
-	0.517f, 0.713f, 0.338f, 1.0f,
-	0.053f, 0.959f, 0.120f, 1.0f,
-	0.393f, 0.621f, 0.362f, 1.0f,
-	0.673f, 0.211f, 0.457f, 1.0f,
-	0.820f, 0.883f, 0.371f, 1.0f,
-	0.982f, 0.099f, 0.879f, 1.0f,
-	0.714f, 0.505f, 0.345f, 1.0f,
-	0.783f, 0.290f, 0.734f, 1.0f,
-	0.722f, 0.645f, 0.174f, 1.0f,
-	0.302f, 0.455f, 0.848f, 1.0f, //180
-	0.583f, 0.771f, 0.014f, 1.0f,
-	0.609f, 0.115f, 0.436f, 1.0f,
-	0.327f, 0.483f, 0.844f, 1.0f,
-	0.822f, 0.569f, 0.201f, 1.0f,
-	0.435f, 0.602f, 0.223f, 1.0f,
-	0.310f, 0.747f, 0.185f, 1.0f,
-	0.597f, 0.770f, 0.761f, 1.0f,
-	0.559f, 0.436f, 0.730f, 1.0f,
-	0.359f, 0.583f, 0.152f, 1.0f,
-	0.310f, 0.747f, 0.185f, 1.0f, //190
-	0.597f, 0.770f, 0.761f, 1.0f,
-	0.559f, 0.436f, 0.730f, 1.0f };
+	0.347f,  0.857f,  0.137f, 1.0f
+ };
 	return mobiuscolors;
 };
 
@@ -1466,7 +1337,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 std::vector<float> calculateEarthNormals(std::vector<float> &sphereVertices) {
 	std::vector<float> earthNormals;
-	for(int i = 0; i < sphereVertices.size(); i += 3)
+	for (int i = 0; i < sphereVertices.size(); i += 3)
 	{
 		glm::vec3 direction = glm::vec3(sphereVertices[i], sphereVertices[i + 1], sphereVertices[i + 2]);
 		glm::vec3 normal = glm::normalize(direction);
@@ -1538,12 +1409,11 @@ std::vector<float>calculateMobiusNormals(std::vector<int> &mobiusIndices, std::v
 		i = i + 3;
 	}
 	for (int j = 0; j < mobiusNormals.size(); j += 3) {
-		glm::vec3 newNormal = glm::normalize(glm::vec3(mobiusNormals[j], mobiusNormals[j+1], mobiusNormals[j+2]));
+		glm::vec3 newNormal = glm::normalize(glm::vec3(mobiusNormals[j], mobiusNormals[j + 1], mobiusNormals[j + 2]));
 		mobiusNormals[j] = newNormal.x;
 		mobiusNormals[j + 1] = newNormal.y;
 		mobiusNormals[j + 2] = newNormal.z;
 	}
-	
+
 	return mobiusNormals;
 }
-
