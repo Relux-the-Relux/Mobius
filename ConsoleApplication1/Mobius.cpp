@@ -593,14 +593,12 @@ int main()
 	glBufferData(GL_ARRAY_BUFFER, 4 * texCoords.size(), &texCoords.front(), GL_STATIC_DRAW);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glEnableVertexAttribArray(2);
-	std::cout << "test1" << std::endl;
 	//Sphere Texture Coordinates
 	glGenBuffers(1, &sphere_VBOnormals);
 	glBindBuffer(GL_ARRAY_BUFFER, sphere_VBOnormals);
 	glBufferData(GL_ARRAY_BUFFER, 4 * earthNormals.size(), &earthNormals.front(), GL_STATIC_DRAW);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glEnableVertexAttribArray(3);
-	std::cout << "test2" << std::endl;
 
 	//EarthTexture
 	unsigned int textureEarth;
@@ -626,8 +624,6 @@ int main()
 		std::cout << "Failed to load texture" << std::endl;
 	}
 	stbi_image_free(data);
-
-	std::cout << "test" << std::endl;
 
 	glUseProgram(shaderLightProgram);
 	glUniformMatrix4fv(glGetUniformLocation(shaderLightProgram, "view"), 1, GL_FALSE, &view[0][0]);
@@ -657,17 +653,12 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LightSphere_EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * LightSphereIndices.size(), &LightSphereIndices.front(), GL_DYNAMIC_DRAW);
 
-	std::cout << "test" << std::endl;
-
 	//LightSphereTexcoordinates
 	glGenBuffers(1, &LightSphere_VBOtex);
 	glBindBuffer(GL_ARRAY_BUFFER, LightSphere_VBOtex);
 	glBufferData(GL_ARRAY_BUFFER, 4 * texCoords.size(), &texCoords.front(), GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glEnableVertexAttribArray(2);
-
-	std::cout << "test" << std::endl;
-
 	//Sun Texture
 
 	unsigned int textureSun;
@@ -683,12 +674,9 @@ int main()
 	int width2, height2, nrChannels2;
 	// The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
 	unsigned char *data2 = stbi_load(std::string("2k_sun.jpg").c_str(), &width2, &height2, &nrChannels2, 0);
-	std::cout << "test" << std::endl;
 	if (data2)
 	{
-		std::cout << "test" << std::endl;
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width2, height2, 0, GL_RGB, GL_UNSIGNED_BYTE, data2);
-		std::cout << "test" << std::endl;
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
@@ -764,8 +752,17 @@ int main()
 	unsigned int cubemapTexture = loadCubemap(faces);
 	glUniform1i(glGetUniformLocation(shaderSkyboxProgram, std::string("skybox").c_str()), 0);
 
+	std::cout << "W nach oben bewegen" << std::endl;
+	std::cout << "S nach unten bewegen" << std::endl;
+	std::cout << "A nach links bewegen" << std::endl;
+	std::cout << "D nach rechts bewegen" << std::endl;
+	std::cout << "Q nach vorne bewegen" << std::endl;
+	std::cout << "E nach hinten bewegen" << std::endl;
+	std::cout << "I nach oben drehen" << std::endl;
+	std::cout << "K nach unten drehen" << std::endl;
+	std::cout << "J nach links drehen" << std::endl;
+	std::cout << "L nach rechts drehen" << std::endl;
 
-	std::cout << "test" << std::endl;
 	int i = 0;
 	int lightsphereposition = 0;
 	while (!glfwWindowShouldClose(window))
